@@ -20,6 +20,10 @@ export const recommendJobs = async (userId) => {
   .slice(0, 10);
 
 };
+export const recommendCompany= async (userId) => {
+  const candidate = await Candidate.findOne({ userId });
+  // find suitable company based on ..
+  }
 
 export const recommendCandidatesForJob = async (userId, jobId) => {
   // 1. Check company

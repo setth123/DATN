@@ -15,8 +15,6 @@ import conversationRoutes from "./routes/conversation.route.js";
 import jobRoutes from "./routes/job.route.js";
 import messageRoutes from "./routes/message.route.js";
 import recommendedRoutes from "./routes/recommended.route.js";
-import recruiterRoutes from "./routes/recruiter.route.js";
-import uploadRoutes from "./routes/upload.route.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,8 +63,6 @@ app.use("/api/conversations", conversationRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/recommended", recommendedRoutes);
-app.use("/api/recruiters", recruiterRoutes);
-app.use("/api/upload", uploadRoutes);
 
 // --- 5. SETUP HTTP SERVER & SOCKET.IO ---
 const server = http.createServer(app);

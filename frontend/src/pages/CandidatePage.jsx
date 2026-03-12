@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import candidateService from "../services/candidate.service";
+import userAvatar from '../assets/user-avatar.svg';
 
 const CandidatePage = (isCurrentUser) => {
   const [candidate, setCandidate] = useState(null);
@@ -15,6 +16,10 @@ const CandidatePage = (isCurrentUser) => {
         else{
           setCandidate(response.data.data);
           localStorage.setItem("candidateProfile", JSON.stringify(response.data.data));
+          // set user roles in "user" in localStorage
+          const user=JSON.parse(localStorage.getItem("user"));
+          user.user.roles.candidate=true;
+          localStorage.setItem("user", JSON.stringify(user));
 
         }
       } catch (error) {
@@ -35,9 +40,17 @@ const CandidatePage = (isCurrentUser) => {
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-8">
         {candidate && ( // The prompt implies this page is always for the current user, so no extra variable is needed.
+// ... other code
+
           <div className="p-6 bg-gray-800 rounded-lg shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h1 className="text-3xl font-bold text-green-500">{candidate.fullName}</h1>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-4">
+                <img src={userAvatar} alt="User Avatar" className="h-24 w-24 rounded-full" />
+                <div>
+                  <h1 className="text-3xl font-bold text-green-500">{candidate.fullName}</h1>
+                  <p className="text-xl text-gray-300 mb-4">{candidate.title}</p>
+                </div>
+              </div>
               {isCurrentUser && (
                 <button
                   onClick={() => navigate("/candidate/createOrEdit")}
@@ -47,8 +60,6 @@ const CandidatePage = (isCurrentUser) => {
                 </button>
               )}
             </div>
-            {/* Display title below full name */} 
-            <p className="text-xl text-gray-300 mb-4">{candidate.title}</p>
 
             {/* Bio section */}
             <div className="mb-6">
@@ -94,17 +105,23 @@ const CandidatePage = (isCurrentUser) => {
                   ))}
                 </ul>
               </div>
-              {candidate.cv && candidate.cvName && (
+              {isCurrentUser && candidate.resumes && candidate.resumes.length > 0 && (
                 <div>
-                  <h2 className="text-xl font-bold mb-2 text-green-400">CV</h2>
-                  <a
-                    href={`http://localhost:4000/${candidate.cv}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:underline"
-                  >
-                    {candidate.cvName}
-                  </a>
+                  <h2 className="text-xl font-bold mb-2 text-green-400">CVs</h2>
+                  <ul className="list-disc list-inside">
+                    {candidate.resumes.map((resume, index) => (
+                      <li key={index}>
+                        <a
+                          href={`http://localhost:4000/${resume.fileUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:underline"
+                        >
+                          {resume.fileName}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

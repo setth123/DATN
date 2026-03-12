@@ -6,7 +6,7 @@ import { requireRecruiter } from "../middlewares/role.middleware.js";
 const router = express.Router();
 
 router.get("/:id", jobController.getJobById);
-
+router.get("/company/:companyId", jobController.getJobsByCompany);
 router.post("/", authMiddleware, requireRecruiter, jobController.createJob);
 router.get("/", jobController.getJobs);
 

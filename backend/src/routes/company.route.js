@@ -9,6 +9,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.get("/me", companyController.getMyCompany);
+router.get("/:id", companyController.getCompanyById);
 router.post(
   "/",
   uploadLocal.single("logo"),

@@ -43,13 +43,13 @@ const candidateSchema = new mongoose.Schema(
       }
     ],
 
-    cv: {
-      fileUrl: String,
-      extractedText: String
-    },
-    cvName: {
-      type: String
-    }
+    resumes: [
+      {
+        fileUrl: String,
+        fileName: String,
+        extractedText: String,
+      },
+    ],
   },
   { timestamps: true }
 );

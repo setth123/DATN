@@ -9,7 +9,17 @@ export const getMyCompany = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
-
+export const getCompanyById = async (req, res) => {
+  try {
+    const company = await companyService.getCompanyById(req.params.id);
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+    res.json({ data: company });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
 export const createOrUpdateCompany = async (req, res) => {
   try {
     const companyData = { ...req.body };

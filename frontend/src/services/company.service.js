@@ -15,7 +15,12 @@ const createOrUpdateCompany = (data) => {
     return axios.post(API_URL, data, { headers: headers });
 };
 
+const getCompanyById = (id) => {
+    return axios.get(`${API_URL}/${id}`, { headers: authHeader() });
+}
+
 export default {
   getCompany,
   createOrUpdateCompany,
+  getCompanyById,
 };

@@ -83,3 +83,10 @@ export const getMyApplications = async (userId, query) => {
   };
 };
 
+export const getApplicationsByJobId = async (jobId) => {
+    const applications = await Application.find({ jobId }).populate({
+        path: "candidateId",
+        select: "fullname cv",
+    });
+    return applications;
+}

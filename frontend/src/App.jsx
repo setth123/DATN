@@ -8,8 +8,10 @@ import CompanyInfoPage from "./pages/CompanyInfoPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CandidateForm from "./components/CandidateForm";
 import CompanyForm from "./components/CompanyForm"
+import JobDetailPage from "./pages/JobDetailPage";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import JobForm from "./components/JobForm";
 
 function App() {
   return (
@@ -51,6 +53,20 @@ function App() {
                 //<ProtectedRoute>
                 <CompanyForm />
                 //</ProtectedRoute>
+              }
+            />
+            <Route
+              path="/company/create-job"
+              element={
+                //<ProtectedRoute>
+                <JobForm />
+                //</ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/jobs/:id"
+              element={
+                <JobDetailPage />
               }
             />
           </Routes>

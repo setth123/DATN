@@ -9,6 +9,10 @@ export const getMyCompany = async (userId) => {
   return Company.findOne({ ownerId: userId });
 };
 
+export const getCompanyById = async (companyId) => {
+  return Company.findById(companyId);
+};
+
 export const createOrUpdateCompany = async (userId, data) => {
   const existing = await Company.findOne({ ownerId: userId });
   if (existing) {

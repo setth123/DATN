@@ -1,5 +1,5 @@
 import * as candidateService from "../services/candidate.service.js";
-import { deleteFile } from "../services/file.service.js"; // Import deleteFile service
+import { deleteFile } from "../services/file.service.js"; 
 
 export const getMyProfile = async (req, res) => {
   try {
@@ -13,18 +13,33 @@ export const getMyProfile = async (req, res) => {
 export const createOrUpdateProfile = async (req, res) => {
   try {
     const profileData = { ...req.body };
-    if (req.file) {
-      profileData.cv = req.file.path;
-      profileData.cvName = req.file.originalname;
-    }
-    if (req.body.deleteCv === 'true') { // Check if deleteCv flag is explicitly 'true'
-      // If a CV file URL was provided for deletion, delete the physical file
-      if (req.body.cvFileUrlToDelete) {
-        await deleteFile(req.body.cvFileUrlToDelete);
+    const userId = req.user.userId;
+
+    // Fetch existing profile to manage resumes
+    const existingProfile = await candidateService.getMyCandidateProfile(userId);
+    let existingResumes = existingProfile?.resumes || [];
+
+    // Handle deleted resumes
+    if (req.body.deletedResumes) {
+      const deletedResumes = JSON.parse(req.body.deletedResumes);
+      for (const resume of deletedResumes) {
+        await deleteFile(resume.fileUrl);
       }
-      profileData.cv = "";
-      profileData.cvName = "";
+      const deletedUrls = deletedResumes.map(r => r.fileUrl);
+      existingResumes = existingResumes.filter(r => !deletedUrls.includes(r.fileUrl));
     }
+
+    // Handle newly uploaded resumes
+    if (req.files) {
+      const newResumes = req.files.map((file) => ({
+        fileUrl: file.path,
+        fileName: file.originalname,
+      }));
+      existingResumes.push(...newResumes);
+    }
+    
+    profileData.resumes = existingResumes;
+
 
     // Since the frontend sends these as JSON strings, we need to parse them
     if (profileData.skills) {
@@ -38,7 +53,7 @@ export const createOrUpdateProfile = async (req, res) => {
     }
 
     const profile = await candidateService.createOrUpdateCandidateProfile(
-      req.user.userId,
+      userId,
       profileData
     );
 
@@ -47,7 +62,7 @@ export const createOrUpdateProfile = async (req, res) => {
       data: profile,
     });
   } catch (err) {
-    console.error("Error in createOrUpdateProfile:", err); // Add logging for debugging
+    console.error("Error in createOrUpdateProfile:", err);
     res.status(400).json({ message: err.message || "An error occurred during profile update." });
   }
 };

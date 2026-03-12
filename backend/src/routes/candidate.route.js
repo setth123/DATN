@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.get("/me", candidateController.getMyProfile);
-router.post("/", uploadLocal.single("cv"), candidateController.createOrUpdateProfile);
+router.post("/", uploadLocal.array("resumes"), candidateController.createOrUpdateProfile);
 
 
 export default router;

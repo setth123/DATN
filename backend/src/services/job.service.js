@@ -3,9 +3,10 @@ import Company from "../models/Company.model.js";
 import { buildJobQuery, buildSortQuery } from "./jobQuery.service.js";
 
 export const createJob = async (userId, data) => {
+  console.log(userId);
   const company = await Company.findOne({
     ownerId: userId,
-    status: "approved"
+    status: "APPROVED"
   });
 
   if (!company) {
@@ -20,6 +21,7 @@ export const createJob = async (userId, data) => {
 };
 
 export const getJobById = async (jobId) => {
+  jobId = typeof jobId === "string" ? Job.schema.path("_id").cast(jobId) : jobId;
   return Job.findById(jobId).populate("companyId", "name logo");
 };
 
@@ -53,4 +55,7 @@ export const getJobs = async (query) => {
       totalPages: Math.ceil(total / limit)
     }
   };
+};
+export const getJobsByCompany = async (companyId) => {
+    return Job.find({ companyId }).populate("companyId", "name logo location");
 };

@@ -39,10 +39,10 @@ const jobSchema = new mongoose.Schema(
       enum: ["Intern", "Junior", "Mid", "Senior"]
     },
 
-    salaryRange: String,
+    salaryRange: {type: String},
 
-    startDate: Date,
-    endDate: Date,
+    startDate: {type: Date,required:true},
+    endDate: {type: Date,required:true},
 
     applicationsNum: {
       type: Number,
