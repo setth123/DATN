@@ -1,0 +1,25 @@
+import * as jobService from "../services/job.service.js";
+
+export const createJob = async (req, res) => {
+  try {
+    const job = await jobService.createJob(req.user.userId, req.body);
+    res.status(201).json({ data: job });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+
+export const getJobById = async (req, res) => {
+  const job = await jobService.getJobById(req.params.id);
+  res.json({ data: job });
+};
+
+export const getJobs = async (req, res) => {
+  try {
+    const result = await jobService.getJobs(req.query);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};

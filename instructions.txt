@@ -1,0 +1,2 @@
+Then if we have time we can implement post new job and get jobs (get all or search, get details)
+Then we will implement apply for job,delete the application and see my applications, and see job applicatians
