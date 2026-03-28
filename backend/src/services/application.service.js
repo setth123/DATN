@@ -1,6 +1,7 @@
 import Application from "../models/Application.model.js";
 import Candidate from "../models/Candidate.model.js";
 import Job from "../models/Job.model.js";
+import Company from "../models/Company.model.js";
 
 export const applyJob = async (userId, jobId, cvSnapshotUrl) => {
   const candidate = await Candidate.findOne({ userId });
@@ -10,11 +11,14 @@ export const applyJob = async (userId, jobId, cvSnapshotUrl) => {
     jobId,
     candidateId: candidate._id
   });
-
   if (existing) {
     throw new Error("Already applied to this job");
   }
-
+  const job= await Job.findOne({_id: jobId});
+  const company= await Company.findOne({_id: job.companyId});
+  if(company.ownerId === userId) {
+    throw new Error("Cannot apply to your own job");
+  }
   const application = await Application.create({
     jobId,
     candidateId: candidate._id,

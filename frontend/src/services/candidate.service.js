@@ -10,10 +10,13 @@ const getMe = () => {
 const createOrEdit = (data) => {
   return axios.post(API_URL, data, { headers: authHeader() });
 };
-
+const getCandidateById=(candidateId)=>{
+  return axios.get(`${API_URL}/${candidateId}`);
+}
 const candidateService = {
   getMe,
   createOrEdit,
+  getCandidateById,
 };
 
 

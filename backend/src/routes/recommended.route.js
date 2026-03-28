@@ -17,4 +17,10 @@ router.get(
     requireCandidate,
     recommendController.recommendJobs
 )
+router.get(
+    "/companies/jobs/:jobId",
+    authMiddleware,
+    requireCandidate,
+    recommendController.recommendCandidateForJob
+)
 export default router;

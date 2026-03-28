@@ -54,9 +54,9 @@ const CompanyInfoPage = (isCurrentUser) => {
         {company ? (
           <div className="max-w-4xl mx-auto p-6 bg-gray-800 rounded-lg shadow-lg">
             <div className="flex justify-between items-start mb-6">
-              import companyLogoPlaceholder from '../assets/company-logo-placeholder.svg';
+              {/* import companyLogoPlaceholder from '../assets/company-logo-placeholder.svg';
 
-// ... other code
+// ... other code */}
 
               <div className="flex items-center gap-4">
                 <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-600">
@@ -71,7 +71,7 @@ const CompanyInfoPage = (isCurrentUser) => {
                 </h1>
               </div>
               {isCurrentUser &&(
-                <div className="flex gap-4">
+                <div className="flex gap-4 mt-7">
                 <Link
                   to="/company/createOrEdit"
                   className="rounded-lg bg-green-600 px-4 py-2 font-bold text-white transition duration-300 hover:bg-green-700"

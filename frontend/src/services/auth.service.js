@@ -38,18 +38,27 @@ const googleLogin = (googleData) => {
 
 const logout = () => {
   localStorage.removeItem("user");
+  localStorage.removeItem("company");
+  localStorage.removeItem("candidate");
 };
 
 const getCurrentUser = () => {
   return JSON.parse(localStorage.getItem("user"));
 };
-
+const getCurrentCompany=()=>{
+  return JSON.parse(localStorage.getItem("company"));
+}
+const getCurrentCandidate=()=>{
+  return JSON.parse(localStorage.getItem("candidate"));
+}
 const authService = {
   register,
   login,
   googleLogin,
   logout,
   getCurrentUser,
+  getCurrentCompany,
+  getCurrentCandidate
 };
 
 export default authService;

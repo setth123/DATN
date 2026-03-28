@@ -66,3 +66,16 @@ export const createOrUpdateProfile = async (req, res) => {
     res.status(400).json({ message: err.message || "An error occurred during profile update." });
   }
 };
+
+export const getCandidateById = async (req, res) => {
+  try {
+    const candidateId = req.params.id;
+    const candidate = await candidateService.getCandidateById(candidateId);
+    if (!candidate) {
+      return res.status(404).json({ message: "Candidate not found" });
+    }
+    res.json({ data: candidate });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}

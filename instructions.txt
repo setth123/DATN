@@ -1,7 +1,30 @@
-Then if we have time we can implement post new job and get jobs (get all or search, get details)
+Then if we have time we can implement apply for job and get jobs (get all or search, get details)
 Update svg icon for FE
 Then we will implement apply for job,delete the application and see my applications, and see job applicatians
 test acc: thanh123-> hashed: $2b$10$DTnk.WVhrmkCHWYIWrpb0u6u.KnZ7/0C8sugZgwmNvW7QCAWLsknW
 Create two level menu for some section
 Homepage need to show latest job, most suitable job, suitable company using recommend service.
-recommend service will find out insight about 5 latest application of current user
+recommend service will find out insight about 5 latest application of current userpost
+| Email                                           | Mật khẩu    |
+| ----------------------------------------------- | ----------- |
+| [user01@example.com](69c3f6ee40fec794dda64a08) | Pass#01mock |
+| [user02@example.com](69c3f71240fec794dda64a0b) | Pass#02mock |
+| [user03@example.com](69c3f71f40fec794dda64a0e) | Pass#03mock |
+| [user04@example.com](69c3f72e40fec794dda64a11) | Pass#04mock |
+| [user05@example.com](69c3f73d40fec794dda64a14) | Pass#05mock |
+| [user06@example.com](69c3f74b40fec794dda64a17) | Pass#06mock |
+| [user07@example.com](69c3f75940fec794dda64a1a) | Pass#07mock |
+| [user08@example.com](69c3f76b40fec794dda64a1d) | Pass#08mock |
+| [user09@example.com](69c3f78540fec794dda64a20) | Pass#09mock |
+| [user10@example.com](69c3f79340fec794dda64a23) | Pass#10mock |
+| [user11@example.com](69c3f7b740fec794dda64a26) | Pass#11mock |
+| [user12@example.com](69c3f7c740fec794dda64a29) | Pass#12mock |
+| [user13@example.com](69c3f7d940fec794dda64a2c) | Pass#13mock |
+| [user14@example.com](69c3f7ee40fec794dda64a2f) | Pass#14mock |
+| [user15@example.com](69c3f7fe40fec794dda64a32) | Pass#15mock |
+| [user16@example.com](69c3f80b40fec794dda64a35) | Pass#16mock |
+| [user17@example.com](69c3f81640fec794dda64a38) | Pass#17mock |
+| [user18@example.com](69c3f82440fec794dda64a3b) | Pass#18mock |
+
+
+

@@ -18,9 +18,17 @@ const createOrUpdateCompany = (data) => {
 const getCompanyById = (id) => {
     return axios.get(`${API_URL}/${id}`, { headers: authHeader() });
 }
+const getApplicationsForJob = (id) => {
+  return axios.get(`${API_URL}/jobs/${id}/applications`, { headers: authHeader() });
+};
+const getMostJobComapny = () => {
+  return axios.get(`${API_URL}/most-jobs`, { headers: authHeader() });
+};
 
 export default {
   getCompany,
   createOrUpdateCompany,
   getCompanyById,
+  getApplicationsForJob,
+  getMostJobComapny
 };

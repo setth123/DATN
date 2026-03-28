@@ -57,3 +57,11 @@ export const getJobApplications = async (req, res) => {
     res.status(403).json({ message: err.message });
   }
 };
+export const getMostJobCompany=async(req,res)=>{
+  try{
+    const companies=await companyService.getMostJobCompany();
+    res.json({data:companies});
+  }catch(err){
+    res.status(400).json({message:err.message});
+  }
+};

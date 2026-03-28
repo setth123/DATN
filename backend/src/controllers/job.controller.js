@@ -1,15 +1,23 @@
 import * as jobService from "../services/job.service.js";
 import * as applicationService from "../services/application.service.js"
 
-export const createJob = async (req, res) => {
+export const createOrUpdateJob = async (req, res) => {
   try {
-    const job = await jobService.createJob(req.user.userId, req.body);
+    const job = await jobService.createOrUpdateJob(req.user.userId, req.body);
     res.status(201).json({ data: job });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };
-
+export const deleteJob = async (req, res) => {
+  try {
+    await jobService.deleteJob(req.params.id);
+    res.status(204).send();
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+}
+ 
 
 export const getJobById = async (req, res) => {
   const job = await jobService.getJobById(req.params.id);

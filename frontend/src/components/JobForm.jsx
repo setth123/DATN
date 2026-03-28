@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import jobService from "../services/job.service";
 import plusIcon from '../assets/plus.svg';
 import trashIcon from '../assets/trash.svg';
@@ -14,6 +14,9 @@ const JobForm = () => {
     startDate: new Date().toISOString().split("T")[0],
     endDate: "",
   });
+
+  const { jobId } = useParams(); // Get job ID from URL params
+  const isEditing = !!jobId; // Determine if we are editing or creating
 
   const [skill, setSkill] = useState({ name: "", level: "Cơ bản" });
   const navigate = useNavigate();
@@ -41,15 +44,56 @@ const JobForm = () => {
     setJob({ ...job, requiredSkills: skills });
   };
 
+  useEffect(() => {
+    console.log(isEditing);
+    if (isEditing) {
+      jobService.getJobById(jobId).then(
+        (response) => {
+          const fetchedJob = response.data.data;
+          setJob({
+            ...fetchedJob,
+            startDate: fetchedJob.startDate ? new Date(fetchedJob.startDate).toISOString().split("T")[0] : "",
+            endDate: fetchedJob.endDate ? new Date(fetchedJob.endDate).toISOString().split("T")[0] : "",
+          });
+        },
+        (error) => {
+          console.error("Error fetching job details:", error);
+          alert("Không thể tải thông tin công việc.");
+          navigate("/company/me"); // Redirect if job not found or error
+        }
+      );
+    }
+  }, [jobId, isEditing, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await jobService.createJob(job);
-      alert("Tạo công việc thành công!");
-      navigate("/company/me");
+      if (isEditing) {
+        await jobService.createOrUpdateJob(job, jobId); // Pass jobId for update
+        alert("Cập nhật công việc thành công!");
+        navigate(`/jobs/${jobId}`); // Redirect to job detail page after update
+      } else {
+        await jobService.createOrUpdateJob(job);
+        alert("Tạo công việc thành công!");
+        response=await jobService.getJobById(response.data.data._id);
+        navigate(`/jobs/${response.data.data._id}`); // Redirect to job detail page after creation
+      }
     } catch (error) {
       console.error("Lỗi khi tạo công việc:", error);
       alert("Tạo công việc thất bại.");
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa tin tuyển dụng này không?")) {
+      try {
+        await jobService.deleteJob(jobId);
+        alert("Tin tuyển dụng đã được xóa thành công!");
+        navigate("/company/me");
+      } catch (error) {
+        console.error("Lỗi khi xóa công việc:", error);
+        alert("Xóa công việc thất bại.");
+      }
     }
   };
 
@@ -64,9 +108,20 @@ const JobForm = () => {
     <div className="min-h-screen bg-gray-900 text-white">
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto p-6 bg-gray-800 rounded-lg shadow-lg">
-          <h2 className="text-3xl font-bold mb-6 text-center text-green-500">
-            Tạo tin tuyển dụng mới
-          </h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-3xl font-bold text-green-500">
+              {isEditing ? "Chỉnh sửa tin tuyển dụng" : "Tạo tin tuyển dụng mới"}
+            </h2>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={handleDeleteJob}
+                className={`${removeButtonStyle} flex items-center px-4 py-2`}
+              >
+                <img src={trashIcon} alt="Xóa" className="h-5 w-5 mr-2" /> Xóa tin tuyển dụng
+              </button>
+            )}
+          </div>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="title" className={labelStyle}>
@@ -130,10 +185,7 @@ const JobForm = () => {
                       <option>Chuyên gia</option>
                     </select>
                   </div>
-                  import plusIcon from '../assets/plus.svg';
-import trashIcon from '../assets/trash.svg';
 
-//... other code
                   <button type="button" onClick={handleAddSkill} className={`${addButtonStyle} flex items-center`}>
                     <img src={plusIcon} alt="Add" className="h-4 w-4 mr-2" />
                     Thêm
@@ -150,13 +202,12 @@ import trashIcon from '../assets/trash.svg';
                     </li>
                   ))}
                 </ul>
-//... other code
               </div>
             </div>
 
             <div>
               <button type="submit" className={`${buttonStyle} w-full`}>
-                Tạo công việc
+                {isEditing ? "Cập nhật tin tuyển dụng" : "Tạo tin tuyển dụng"}
               </button>
             </div>
           </form>

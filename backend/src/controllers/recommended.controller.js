@@ -20,3 +20,12 @@ export const recommendJobs = async (req, res) => {
         res.status(400).json({ message: err.message });
     }
 } 
+
+export const recommendCandidateForJob= async (req, res) => {
+    try {
+        const candidates = await recommendService.recommendCandidatesForJob(req.user.userId, req.params.jobId);
+        res.json(candidates);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+}

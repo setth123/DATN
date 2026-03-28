@@ -9,6 +9,53 @@ export const getMyCompany = async (userId) => {
   return Company.findOne({ ownerId: userId });
 };
 
+export const getMostJobCompany=async()=>{
+  //get most available job company in the last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const companies = await Company.aggregate([
+    {
+      $match: {
+        status: "APPROVED"
+      }
+    },
+    {
+      $lookup: {
+        from: "jobs",
+        localField: "_id",
+        foreignField: "companyId",
+        as: "jobs"
+      }
+    },
+    {
+      $unwind: "$jobs"
+    },
+    {
+      $match: {
+        "jobs.createdAt": { $gte: thirtyDaysAgo }
+      }
+    },
+    {
+      $group: {
+        _id: "$_id",
+        name: { $first: "$name" },
+        logoURL: { $first: "$logoURL" },
+        jobCount: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { jobCount: -1 }
+    },
+    {
+      $limit: 6
+    }
+  ]);
+
+  return companies;
+  
+}
+
 export const getCompanyById = async (companyId) => {
   return Company.findById(companyId);
 };
@@ -108,7 +155,7 @@ export const updateCompany = async (userId, data) => {
 export const getApplicationsByJob = async (userId, jobId) => {
   const company = await Company.findOne({
     ownerId: userId,
-    status: "approved"
+    status: "APPROVED"
   });
 
   if (!company) throw new Error("Company not found");

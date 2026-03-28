@@ -1,43 +1,57 @@
 export const LEVEL_MAP = {
-  "cơ bản": 1,
-  "thành thạo": 2,
-  "chuyên sâu": 3,
-  "senior": 4,
-  "expert": 5
+  "Cơ bản": 1,
+  "Trung bình": 2,
+  "Khá": 3,
+  "Thành thạo": 4,
+  "Chuyên gia": 5
 };
 
 const calcSkillMatch = (jobSkills, candidateSkills) => {
-  const match = jobSkills.filter(s =>
-    candidateSkills.includes(s)
-  );
-  return match.length / jobSkills.length;
+  const processedJobSkills = jobSkills.map(s => s.name.toLowerCase().trim());
+  const processedCandidateSkills = candidateSkills.map(s => s.name.toLowerCase().trim());
+
+  const skillLevel=jobSkills.map(s=>s.level);
+  const candidateSkillLevel=candidateSkills.map(s=>s.level);
+  let matchCount = 0;
+  processedJobSkills.forEach((jobSkill, index) => {
+    const candidateIndex = processedCandidateSkills.indexOf(jobSkill);
+    if (candidateIndex !== -1) {
+      // Nếu có skill trùng tên, so sánh level
+      if (LEVEL_MAP[candidateSkillLevel[candidateIndex]] >= LEVEL_MAP[skillLevel[index]]) {
+        matchCount++;
+      }
+    }
+  });
+  return processedJobSkills.length > 0 ? matchCount / processedJobSkills.length : 0;
+
 };
 
-export const matchCandidateToJob = (job, candidate) => {
+export const matchCandidateToJob = (job, candidate, candidateSkillsOverride = null,previousJobTitle = []) => {
+  const skillsToMatch = candidateSkillsOverride && candidateSkillsOverride.length > 0
+    ? candidateSkillsOverride
+    : candidate.skills;
   const skillScore = calcSkillMatch(
     job.requiredSkills,
-    candidate.skills
+    skillsToMatch
   );
 
-  const levelScore =
-    LEVEL_MAP[candidate.level] >= LEVEL_MAP[job.level] ? 1 : 0;
+  let titleScore = 0;
+  const jobTitleLower = job.title?.toLowerCase(); // Use optional chaining for job.title
 
-  const titleScore =
-    candidate.title
-      ?.toLowerCase()
-      .includes(job.title.toLowerCase()) ? 1 : 0;
+  if (jobTitleLower) {
+    // Filter out null/undefined titles from previousJobTitle before searching
+    const validPreviousJobTitles = previousJobTitle.filter(title => title).map(title => title.toLowerCase());
 
-  const score =
-    0.5 * skillScore +
-    0.3 * levelScore +
-    0.2 * titleScore;
-
-  return {
-    percentage: Math.round(score * 100),
-    detail: {
-      skills: Number(skillScore.toFixed(2)),
-      level: levelScore,
-      title: Number(titleScore.toFixed(2))
+    if (validPreviousJobTitles.some(prevTitle => prevTitle.includes(jobTitleLower)) ||
+        candidate.title?.toLowerCase().includes(jobTitleLower)) {
+      titleScore = 1;
     }
   }
+  return {
+    percentage: Math.round((0.7 * skillScore + 0.3 * titleScore) * 100),
+    detail: {
+      skills: Number(skillScore.toFixed(2)),
+      title: Number(titleScore.toFixed(2))
+    }
+  };
 };

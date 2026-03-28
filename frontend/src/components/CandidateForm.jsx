@@ -6,7 +6,7 @@ import trashIcon from '../assets/trash.svg';
 import uploadIcon from '../assets/upload.svg';
 
 const CandidateForm = () => {
-  const candidateData = localStorage.getItem("candidateProfile");
+  const candidateData = localStorage.getItem("candidate");
   const parsedCandidateData = candidateData ? JSON.parse(candidateData) : null;
 
   const [formData, setFormData] = useState({
@@ -23,6 +23,7 @@ const CandidateForm = () => {
       parsedCandidateData?.education && parsedCandidateData.education.length > 0
         ? parsedCandidateData.education
         : [{ school: "", degree: "", startYear: "", endYear: "" }],
+    isOpenToWork: parsedCandidateData?.isOpenToWork ?? true, // Default to true if not present
     resumes: parsedCandidateData?.resumes || [],
   });
 
@@ -33,7 +34,11 @@ const CandidateForm = () => {
   const [success, setSuccess] = useState(null);
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    if (type === "checkbox") {
+      setFormData({ ...formData, [name]: checked });
+      return;
+    }
     setFormData({ ...formData, [name]: value });
   };
 
@@ -154,6 +159,17 @@ const CandidateForm = () => {
                             <textarea name="bio" value={formData.bio} onChange={handleInputChange} className={inputStyle} rows="4" required />
                         </div>
             
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="isOpenToWork"
+                id="isOpenToWork"
+                checked={formData.isOpenToWork}
+                onChange={handleInputChange}
+                className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-600 rounded"
+              />
+              <label htmlFor="isOpenToWork" className="ml-2 block text-white">Sẵn sàng làm việc</label>
+            </div>
             <div>
               <label htmlFor="cv" className={labelStyle}>
                 Quản lý CV
@@ -224,7 +240,7 @@ const CandidateForm = () => {
                                     <select name="level" value={skill.level} onChange={e => handleDynamicChange(e, index, "skills")} className={inputStyle}>
                                         {["Cơ bản", "Trung bình", "Khá", "Thành thạo", "Chuyên gia"].map(level => <option key={level} value={level}>{level}</option>)}
                                     </select>
-                                    <button type="button" onClick={() => removeDynamicField(index, "skills")} className={`${removeButtonStyle} flex items-center`}><img src={trashIcon} alt="Remove" className="h-4 w-4 mr-1" />Xóa</button>
+                                    <button type="button" onClick={() => removeDynamicField(index, "skills")} className={`${removeButtonStyle} flex items-center`}><img src={trashIcon} alt="Remove" className="h-4 w-20 mr-1" />Xóa</button>
                                 </div>
                             ))}
                             <button type="button" onClick={() => addDynamicField("skills")} className={`${addButtonStyle} flex items-center`}><img src={plusIcon} alt="Add" className="h-4 w-4 mr-2" />Thêm kỹ năng</button>

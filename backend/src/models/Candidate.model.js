@@ -50,6 +50,7 @@ const candidateSchema = new mongoose.Schema(
         extractedText: String,
       },
     ],
+    isOpenToWork: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

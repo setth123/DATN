@@ -8,11 +8,21 @@ const Header = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
+    const handleAuthChange = () => {
+      const user = authService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        console.log(user);
+      } else {
+        setCurrentUser(undefined); // Xóa người dùng nếu đã đăng xuất
+      }
     }
-  }, []);
+
+    handleAuthChange(); // Kiểm tra ban đầu khi component mount
+
+    window.addEventListener('authChange', handleAuthChange);
+    return () => window.removeEventListener('authChange', handleAuthChange); // Dọn dẹp listener khi component unmount
+  }, []); // Dependency array rỗng vì chúng ta sử dụng event listener để cập nhật
 
   const handleLogout = () => {
     authService.logout();

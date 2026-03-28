@@ -32,6 +32,12 @@ function App() {
               }
             />
             <Route
+              path="/candidate/:candidateId"
+              element={
+                <CandidatePage isCurrentUser={false} />
+              }
+            />
+            <Route
               path="/candidate/createOrEdit"
               element={
                 //<ProtectedRoute>
@@ -57,6 +63,14 @@ function App() {
             />
             <Route
               path="/company/create-job"
+              element={
+                //<ProtectedRoute>
+                <JobForm />
+                //</ProtectedRoute>
+              }
+            />
+            <Route
+              path="/job/edit/:jobId"
               element={
                 //<ProtectedRoute>
                 <JobForm />

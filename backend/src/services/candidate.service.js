@@ -13,6 +13,17 @@ export const getMyCandidateProfile = async (userId) => {
   }
 };
 
+export const getCandidateById = async (candidateId) => {
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new Error("Candidate not found");
+  }
+  const email = await User.findById(candidate.userId).select("email");
+  const candidateObj = candidate.toObject();
+  candidateObj.email = email.email;
+  return candidateObj;
+};
+
 export const createOrUpdateCandidateProfile = async (userId, data) => {
   const existing = await Candidate.findOne({ userId });
   if (existing) {

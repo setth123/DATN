@@ -7,7 +7,8 @@ const router = express.Router();
 
 router.get("/:id", jobController.getJobById);
 router.get("/company/:companyId", jobController.getJobsByCompany);
-router.post("/", authMiddleware, requireRecruiter, jobController.createJob);
+router.post("/", authMiddleware, requireRecruiter, jobController.createOrUpdateJob);
+router.delete("/:id", authMiddleware, requireRecruiter, jobController.deleteJob);
 router.get("/", jobController.getJobs);
 
 export default router;

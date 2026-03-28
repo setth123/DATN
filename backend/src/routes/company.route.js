@@ -6,12 +6,13 @@ import { requireRecruiter } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
-router.use(authMiddleware);
 
-router.get("/me", companyController.getMyCompany);
+router.get("/me",authMiddleware, companyController.getMyCompany);
+router.get("/most-jobs",companyController.getMostJobCompany);
 router.get("/:id", companyController.getCompanyById);
 router.post(
   "/",
+  authMiddleware,
   uploadLocal.single("logo"),
   companyController.createOrUpdateCompany
 );

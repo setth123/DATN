@@ -5,10 +5,10 @@ import { uploadLocal } from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
-router.use(authMiddleware);
 
-router.get("/me", candidateController.getMyProfile);
-router.post("/", uploadLocal.array("resumes"), candidateController.createOrUpdateProfile);
+router.get("/me",authMiddleware, candidateController.getMyProfile);
+router.get("/:id", candidateController.getCandidateById);
+router.post("/",authMiddleware, uploadLocal.array("resumes"), candidateController.createOrUpdateProfile);
 
 
 export default router;
