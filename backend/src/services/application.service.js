@@ -2,6 +2,8 @@ import Application from "../models/Application.model.js";
 import Candidate from "../models/Candidate.model.js";
 import Job from "../models/Job.model.js";
 import Company from "../models/Company.model.js";
+import { createNotification } from "./notification.service.js";
+import { getIo } from "./socket.service.js"; // Import getIo for socket emission
 
 export const applyJob = async (userId, jobId, cvSnapshotUrl) => {
   const candidate = await Candidate.findOne({ userId });
@@ -14,9 +16,12 @@ export const applyJob = async (userId, jobId, cvSnapshotUrl) => {
   if (existing) {
     throw new Error("Already applied to this job");
   }
-  const job= await Job.findOne({_id: jobId});
-  const company= await Company.findOne({_id: job.companyId});
-  if(company.ownerId === userId) {
+  const job = await Job.findById(jobId).populate('companyId');
+  if (!job) {
+    throw new Error("Job not found");
+  }
+  const company = job.companyId;
+  if(company.ownerId.toString() === userId) {
     throw new Error("Cannot apply to your own job");
   }
   const application = await Application.create({
@@ -29,6 +34,19 @@ export const applyJob = async (userId, jobId, cvSnapshotUrl) => {
     $inc: { applicationsNum: 1 }
   });
 
+  // Create notification for the company
+  const newNotification = await createNotification({
+    to: company.ownerId,
+    from: candidate._id,
+    fromModel: 'Candidate',
+    type: 'NEW_APPLICATION',
+    displayName: candidate.fullName, // New field: candidate's full name
+    jobTitle: job.title, // New field: job title
+  });
+  const io = getIo();
+  if(io){
+    io.to(company.ownerId.toString()).emit('new_notification', newNotification);
+  }
   return application;
 };
 

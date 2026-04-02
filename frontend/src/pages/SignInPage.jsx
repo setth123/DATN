@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import authService from "../services/auth.service";
+import candidateService from "../services/candidate.service";
 
 const SignInPage = () => {
   const [email, setEmail] = useState("");
@@ -17,6 +18,15 @@ const SignInPage = () => {
       const data = await authService.login(email, password);
 
       if (data.data.token) {
+        // After successful login, attempt to fetch candidate data
+        try {
+          const candidateResponse = await candidateService.getMe();
+          if (candidateResponse.data.data) {
+            localStorage.setItem("candidate", JSON.stringify(candidateResponse.data.data));
+          }
+        } catch (candidateError) {
+          console.warn("Could not fetch candidate data after login:", candidateError);
+        }
         navigate("/");
       } else {
         setMessage(data.message);
@@ -30,6 +40,15 @@ const SignInPage = () => {
     try {
       console.log("Google credential response:", credentialResponse);
       await authService.googleLogin(credentialResponse);
+      // After successful Google login, attempt to fetch candidate data
+      try {
+        const candidateResponse = await candidateService.getMe();
+        if (candidateResponse.data.data) {
+          localStorage.setItem("candidate", JSON.stringify(candidateResponse.data.data));
+        }
+      } catch (candidateError) {
+        console.warn("Could not fetch candidate data after Google login:", candidateError);
+      }
       navigate("/");
     } catch (error) {
       setMessage("Google login failed");

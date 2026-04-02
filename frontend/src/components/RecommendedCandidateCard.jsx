@@ -2,11 +2,14 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import userAvatar from '../assets/user-avatar.svg';
 import openToWorkAvatar from '../assets/open-to-work.png';
+import { useChat } from '../ChatContext';
 
 const RecommendedCandidateCard = ({ candidate }) => {
   const navigate = useNavigate();
-  const handleMessageClick = () => {
-    navigate(`/candidate/${candidate._id}`);
+  const { openChat } = useChat();
+  const handleMessageClick = (e) => {
+    e.stopPropagation(); // Prevent navigating to candidate page when clicking chat button
+    openChat(candidate.candidate._id, 'candidate');
   };
   console.log(candidate);
   return (
@@ -19,7 +22,7 @@ const RecommendedCandidateCard = ({ candidate }) => {
       <p className="text-white font-semibold text-center mb-3 truncate w-full">
         {candidate.candidate.fullName}
       </p>
-      <button
+      <button 
         onClick={handleMessageClick}
         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm w-full"
       >

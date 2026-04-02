@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import authService from "../services/auth.service";
 import userAvatar from "../assets/user-avatar.svg";
+import NotificationBell from "./NotificationBell";
 
 const Header = () => {
   const [currentUser, setCurrentUser] = useState(undefined);
@@ -62,6 +63,7 @@ const Header = () => {
         <div className="flex items-center space-x-4">
           {currentUser ? (
             <>
+              <NotificationBell />
               <Link to="/me" className="flex items-center space-x-2">
                 <img src={userAvatar} alt="User Avatar" className="h-8 w-8 rounded-full" />
                 <span className="font-bold">{`Welcome, ${currentUser.user.email.split('@')[0]}`}</span>

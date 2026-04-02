@@ -9,8 +9,10 @@ import emailIcon from "../assets/email.svg";
 import websiteIcon from "../assets/website.svg";
 import ApplyModal from "../components/ApplyModal";
 import userAvatar from '../assets/user-avatar.svg'; // Import user avatar placeholder
+import chatIcon from '../assets/chat.svg'; // Import chat icon
 import RecommendedCandidateCard from "../components/RecommendedCandidateCard";
 import openToWorkAvatar from '../assets/open-to-work.png'; // Import open-to-work avatar
+import { useChat } from '../ChatContext'; // Import useChat
 
 const PencilIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -30,6 +32,7 @@ const JobDetailPage = () => {
   const currentUser = authService.getCurrentUser();
   const currentCompany = authService.getCurrentCompany();
   const currentCandidate=authService.getCurrentCandidate();
+  const { openChat } = useChat(); // Use the chat context
   useEffect(() => {
     jobService.getJobById(id).then(
       (response) => {
@@ -107,10 +110,14 @@ const JobDetailPage = () => {
           )}
           <div>
             <h1 className="text-3xl font-bold text-green-500">{job.title}</h1>
-            <p className="text-xl text-gray-400">{company.name}</p>
+            {!isOwner && (
+              <Link to={`/company/${company._id}`} className="text-blue-400 hover:underline">
+                {company.name}
+              </Link>
+            )}
             {isOwner && (
               <Link
-                to={`/job/edit/${job._id}`}
+                to={`/job/edit/${job._id}`} // This link is for editing the job, not the company
                 className="mt-2 inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <PencilIcon className="mr-2" /> Chỉnh sửa tin tuyển dụng
@@ -218,7 +225,8 @@ const JobDetailPage = () => {
                             Tải CV
                           </a>
                         )}
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                  <button onClick={() => openChat({ id: app.candidateId.userId, name: app.candidateId.fullName }, 'candidate')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors flex items-center gap-2">
+                    <img src={chatIcon} alt="Chat" className="h-5 w-5" />
                     Nhắn tin
                   </button>
                 </div>

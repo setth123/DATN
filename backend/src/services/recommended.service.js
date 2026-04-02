@@ -30,7 +30,11 @@ export const recommendJobs = async (userId) => {
   const augmentedCandidateSkills = Array.from(uniqueSkillsMap.values());
   const previousTitle=appliedJobs.map(job=>job.title);
   // Lọc bỏ các công việc mà ứng viên đã ứng tuyển khỏi danh sách đề xuất
-  const filteredJobs = jobs.filter(job => !appliedJobIds.includes(job._id.toString()));
+  var filteredJobs = jobs.filter(job => !appliedJobIds.includes(job._id.toString()));
+  filteredJobs=await Promise.all(filteredJobs.map(async (job) => {
+    const company = await Company.findById(job.companyId).select('name logoURL location');
+    return { ...job._doc, companyInfo: company };
+  }));
 
   return filteredJobs
   .map(job => {
@@ -44,10 +48,6 @@ export const recommendJobs = async (userId) => {
   .sort((a, b) => b.matchScore - a.matchScore)
   .slice(0, 12);
 };
-export const recommendCompany= async (userId) => {
-  const candidate = await Candidate.findOne({ userId });
-  // find suitable company based on ..
-  }
 
 export const recommendCandidatesForJob = async (userId, jobId) => {
   // 1. Check company

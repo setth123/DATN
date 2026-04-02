@@ -15,14 +15,19 @@ import conversationRoutes from "./routes/conversation.route.js";
 import jobRoutes from "./routes/job.route.js";
 import messageRoutes from "./routes/message.route.js";
 import recommendedRoutes from "./routes/recommended.route.js";
+import notificationRoutes from "./routes/notification.route.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 // --- 1. INITIAL CONFIGURATION ---
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+// --- 5. SETUP HTTP SERVER & SOCKET.IO ---
+const server = http.createServer(app);
+initSocket(server); // Khởi tạo và gắn Socket.IO vào server
+
 
 // --- 2. DATABASE CONNECTION ---
 connectDB(); // Gọi hàm kết nối DB
@@ -63,14 +68,12 @@ app.use("/api/conversations", conversationRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/recommended", recommendedRoutes);
+app.use("/api/notifications", notificationRoutes);
 
-// --- 5. SETUP HTTP SERVER & SOCKET.IO ---
-const server = http.createServer(app);
-initSocket(server); // Khởi tạo và gắn Socket.IO vào server
 
 // --- 6. START SERVER ---
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-export default app;
+//module.exports = app;

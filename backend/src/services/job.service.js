@@ -1,6 +1,7 @@
 import Job from "../models/Job.model.js";
 import Company from "../models/Company.model.js";
-import { buildJobQuery, buildSortQuery } from "./jobQuery.service.js";
+
+import { buildJobKeywordConditions, buildSortQuery } from "./jobQuery.service.js";
 
 export const createOrUpdateJob = async (userId, data) => {
   const company = await Company.findOne({
@@ -48,14 +49,49 @@ export const getJobs = async (query) => {
     sort= "newest"
   } = query;
 
-  const filter = buildJobQuery(query);
+  const mainFilterConditions = []; // Conditions for the Job collection
+
+  // Handle keyword search (job fields OR company name)
+  if (query.keyword) {
+    const keywordOrConditions = buildJobKeywordConditions(query.keyword);
+
+    // Find companies matching the keyword
+    const matchingCompaniesByKeyword = await Company.find({ name: { $regex: query.keyword, $options: "i" } }).select('_id');
+    if (matchingCompaniesByKeyword.length > 0) {
+      keywordOrConditions.push({ companyId: { $in: matchingCompaniesByKeyword.map(c => c._id) } });
+    }
+    if (keywordOrConditions.length > 0) {
+      mainFilterConditions.push({ $or: keywordOrConditions });
+    }
+  }
+
+  // Handle location search
+  if (query.locations) {
+    const locationParts = query.locations.split(",").map(part => part.trim());
+    const locationRegexConditions = locationParts.map(part => ({
+      location: { $regex: part, $options: "i" }
+    }));
+    const matchingCompaniesByLocation = await Company.find({ $or: locationRegexConditions }).select('_id');
+
+    if (matchingCompaniesByLocation.length === 0) {
+      // If location filter is applied but no companies match, return empty results
+      return {
+        data: [],
+        pagination: { total: 0, page: Number(page), limit: Number(limit), totalPages: 0 }
+      };
+    }
+    mainFilterConditions.push({ companyId: { $in: matchingCompaniesByLocation.map(c => c._id) } });
+  }
+
+  // Combine all main filter conditions with $and
+  const filter = mainFilterConditions.length > 0 ? { $and: mainFilterConditions } : {};
   const sortQuery = buildSortQuery(sort);
 
   const skip = (page - 1) * limit;
 
   const [jobs, total] = await Promise.all([
     Job.find(filter)
-      .populate("companyId", "name logo location")
+      .populate("companyId", "name logoURL location")
       .sort(sortQuery)
       .skip(skip)
       .limit(Number(limit)),

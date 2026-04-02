@@ -1,3 +1,5 @@
+import * as messageService from "../services/message.service.js";
+
 export const getMessages=async(req,res)=>{
     try{
         const userId=req.user.id;
@@ -10,12 +12,25 @@ export const getMessages=async(req,res)=>{
         res.status(400).json({ message: err.message });
     }
 }
-export const sendMessage=async(req,res)=>{
+export const sendMessage=async(req,res)=>{ // No io parameter
     try{
-        const userId=req.user.id;
+        const userId=req.user.userId;
         const {conversationId,text}=req.body;
+        const message=await messageService.sendMessage(userId,conversationId,text); // No io passed
+        res.status(201).json({data:message});
+    }
+    catch(err){
+        res.status(400).json({ message: err.message });
+    }
+}
 
-        const message=await messageService.sendMessage(userId,conversationId,text);
+export const sendFile=async(req,res)=>{ // No io parameter
+    try{
+        const userId=req.user.userId;
+        const {conversationId}=req.body;
+        const file=req.file;
+
+        const message=await messageService.sendFile(userId,conversationId,file); // No io passed
         res.status(201).json({data:message});
     }
     catch(err){

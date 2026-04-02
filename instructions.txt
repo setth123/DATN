@@ -1,10 +1,7 @@
-Then if we have time we can implement apply for job and get jobs (get all or search, get details)
+intergrated search feature->message->message with chatbot(important)-> interview (if we have time)
 Update svg icon for FE
-Then we will implement apply for job,delete the application and see my applications, and see job applicatians
 test acc: thanh123-> hashed: $2b$10$DTnk.WVhrmkCHWYIWrpb0u6u.KnZ7/0C8sugZgwmNvW7QCAWLsknW
 Create two level menu for some section
-Homepage need to show latest job, most suitable job, suitable company using recommend service.
-recommend service will find out insight about 5 latest application of current userpost
 | Email                                           | Mật khẩu    |
 | ----------------------------------------------- | ----------- |
 | [user01@example.com](69c3f6ee40fec794dda64a08) | Pass#01mock |

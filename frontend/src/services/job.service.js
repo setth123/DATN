@@ -17,7 +17,7 @@ const getJobById = (id) => {
     return axios.get(API_URL + `/${id}`, { headers: authHeader() });
 };
 const getJobs=(query)=>{
-  return axios.get(API_URL,{ params: query, headers: authHeader() });
+  return axios.get(`${API_URL}/search`,{ params: query, headers: authHeader() });
 }
 
 
