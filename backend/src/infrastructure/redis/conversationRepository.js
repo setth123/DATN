@@ -18,7 +18,6 @@ export async function createConversation(id, data) {
 export async function getConversation(id) {
   const key = CONVERSATION_KEY(id);
   const raw = await redis.get(key);
-
   if (!raw) return null;
   return JSON.parse(raw);
 }

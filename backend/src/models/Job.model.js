@@ -36,7 +36,7 @@ const jobSchema = new mongoose.Schema(
 
     level: {
       type: String,
-      enum: ["Intern", "Junior", "Mid", "Senior"]
+      enum: ["Intern","Fresher", "Junior", "Mid", "Senior"]
     },
 
     salaryRange: {type: String},

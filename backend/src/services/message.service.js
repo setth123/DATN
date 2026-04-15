@@ -1,22 +1,37 @@
 import mongoose from "mongoose";
 import Message from "../models/Message.model.js";
 import Conversation from "../models/Conversation.model.js";
-import { randomUUID } from "crypto";
 import { getIo } from "./socket.service.js";
 import { runGemini } from "./gemini.service.js";
-import { createConversation, getConversation,updateConversation } from "../infrastructure/redis/conversationRepository.js";
+import {
+  getConversation,
+  updateConversation,
+} from "../infrastructure/redis/conversationRepository.js";
 import { createNotification } from "./notification.service.js";
 import User from "../models/User.model.js";
+import { getOrCreatAIConversation } from "./conversation.service.js";
+import { deleteFile } from "./file.service.js";
+import { maybeSummarize, getPDFContext, getDOCXContext } from "../utils/buildPrompt.js";
 
-export const getMessages=async(conversationId,limit,before)=>{
+export const getMessages=async(conversationId,limit,before,isAI)=>{
     if(!conversationId)throw new Error("Conversation ID is required");
     const query={conversationId};
     if(before)query.createAt={$lt:new Date(before)};
-
-    const messages=await Message.find(query)
+    let messages;
+    if(isAI){
+        messages=await getConversation(conversationId);
+        if(!messages)throw new Error("Conversation not found or expired");
+        messages=messages.messages.map(m=>({
+            ...m,
+            sender:{name: m.role === "user" ? "You" : "AI Assistant"}
+        }));
+    }
+    else{
+    messages=await Message.find(query)
         .populate('sender', 'name')
         .sort({createdAt:-1})
         .limit(limit||50);
+    }
 
     return messages;
 }
@@ -64,7 +79,22 @@ export const sendMessage=async(userId,conversationId,text)=>{
     return populatedMessage;
 }
 
-export const sendFile=async(userId,conversationId,file)=>{
+export const sendFile=async(userId, conversationId, file, isAI)=>{
+    if (isAI) {
+        const io = getIo();
+        const onChunk = (chunk) => {
+            // Client đã tham gia vào phòng có ID là conversationId, nên ta có thể emit tới phòng đó.
+            io.to(conversationId).emit("ai_chunk", { conversationId, chunk });
+        };
+
+        // Đây là một lệnh gọi "fire-and-forget" từ góc độ của HTTP request.
+        // Quá trình xử lý diễn ra ngầm và stream kết quả qua socket.
+        handleAIFileMessage({ userId, conversationId, file, onChunk });
+
+        // Controller có thể dùng thông báo này để gửi phản hồi về cho client.
+        return { message: "AI processing of the file has started." };
+    }
+
     const io = getIo(); // Get io instance
     if(!file||!conversationId)throw new Error("Invalid payload");
 
@@ -111,71 +141,95 @@ export const sendFile=async(userId,conversationId,file)=>{
 
     return populatedMessage;
 }
+
+const MAX_MESSAGES_IN_MEMORY = 50;
+
 export const handleAIMessage=async({ userId, conversationId, text, systemInstruction, onChunk })=>{
-    let convoId = conversationId;
-    let conversation;
+    // 1. Lấy hoặc tạo cuộc trò chuyện và ID của nó. ID cuộc trò chuyện AI chính là userId.
+    const { convoId } = await getOrCreatAIConversation(userId, systemInstruction);
+    const conversation = await getConversation(convoId);
 
-    if (!convoId) {
-        convoId = randomUUID();
-        conversation = {
-        systemInstruction:
-            systemInstruction ||
-            `Bạn là AI tuyển dụng.
-
-            QUY TẮC:
-            - KHÔNG trả lời trực tiếp nếu có thể gọi function
-            - PHẢI gọi function khi cần dữ liệu từ hệ thống
-            - CHỈ sử dụng các function được cung cấp
-
-            HÀNH VI:
-            - Nếu user muốn tìm job → searchJobs
-            - Nếu user muốn được gợi ý job phù hợp → recommendJobsForCandidate
-            - Nếu user muốn tìm ứng viên cho job → recommendCandidatesForJob
-            - Nếu user hỏi cần cải thiện gì để apply job → analyzeCandidateGapForJob
-            `,
-        messages: [],
-        };
-        await createConversation(convoId, conversation);
-    } else {
-        conversation = await getConversation(convoId);
-        if (!conversation) {
-            throw new Error("AI conversation expired");
-        }
+    if (!conversation) {
+        // Trường hợp này không nên xảy ra nếu getOrCreatAIConversation hoạt động đúng.
+        // Tuy nhiên, đây là một biện pháp bảo vệ.
+        throw new Error("Không tìm thấy cuộc trò chuyện AI hoặc đã hết hạn.");
     }
-
     
-    //summarize old context if needed
-    await maybeSummarize(conversation);
-    
-    // Thêm tin nhắn người dùng hiện tại vào lịch sử cuộc trò chuyện
+    // 2. Thêm tin nhắn hiện tại của người dùng vào lịch sử
     conversation.messages.push({
         role: "user",
         content: text,
     });
-    
-    // get AI response
-    let assistantReply = "";
-    // Truyền toàn bộ lịch sử cuộc trò chuyện, callback onChunk, userId và systemInstruction tới runGemini
-    const reply = await runGemini(conversation.messages, onChunk, userId, conversation.systemInstruction);
-    assistantReply = reply; // runGemini giờ đây trả về toàn bộ phản hồi
-    
-    // add AI response to conversation
+
+    // 3. Tóm tắt cuộc trò chuyện nếu nó quá dài
+    await maybeSummarize(conversation);
+
+    // 4. Giới hạn ngữ cảnh trong 20 tin nhắn cuối để quản lý token
+    let conversation_context;
+    if (conversation.messages.length > 20) {
+        conversation_context = conversation.messages.slice(-20);
+    } else {
+        conversation_context = conversation.messages;
+    }
+
+    // 5. Gọi dịch vụ Gemini để nhận phản hồi từ AI
+    const assistantReply = await runGemini(
+        conversation_context,
+        onChunk,
+        userId,
+        conversation.systemInstruction
+    );
+
+    // 6. Thêm phản hồi đầy đủ của AI vào lịch sử
     conversation.messages.push({
-        role: "assistant",
+        role: "model", // Sử dụng role 'model' cho trợ lý AI
         content: assistantReply,
     });
 
-    if (conversation.messages.length > MAX_MESSAGES) {
-        conversation.messages = conversation.messages.slice(-MAX_MESSAGES);
+    // 7. Giữ cho lịch sử trò chuyện trong Redis không tăng vô hạn
+    if (conversation.messages.length > MAX_MESSAGES_IN_MEMORY) {
+        const messagesToKeep = conversation.messages.slice(-MAX_MESSAGES_IN_MEMORY);
+        conversation.messages = messagesToKeep;
     }
 
-    // update redis
+    // 8. Cập nhật lại cuộc trò chuyện trong Redis
     await updateConversation(convoId, conversation);
 
     return{
         conversationId: convoId,
-        reply,
+        reply: assistantReply,
     }
 }
 
-//next thing to do: connect agent to db
+export const handleAIFileMessage=async({userId, conversationId, file, onChunk})=>{
+    try {
+        let extractedText = "";
+        if (file.mimetype === "application/pdf") {
+            extractedText = await getPDFContext(file.path);
+        } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+            extractedText = await getDOCXContext(file.path);
+        } else {
+            throw new Error("Unsupported file type");
+        }
+
+        const fileContextText = `Tôi đã tải lên một tệp có tên "${file.originalname}". Dưới đây là nội dung của nó. Hãy phân tích và trả lời các câu hỏi của tôi dựa trên nội dung này.\n\n---NỘI DUNG TỆP---\n${extractedText}`;
+
+    // Gọi hàm xử lý tin nhắn AI chính với nội dung đã trích xuất
+    return await handleAIMessage({
+        userId,
+        conversationId,
+        text: fileContextText,
+        systemInstruction: null, // System instruction đã có trong cuộc trò chuyện
+        onChunk, // Chuyển tiếp callback onChunk để stream phản hồi
+    });
+    } finally {
+        // Ensure the temporary file is deleted after processing
+        if (file && file.path) {
+            try {
+                await deleteFile(file.path);
+            } catch (error) {
+                console.error(`Failed to delete temporary AI file ${file.path}:`, error);
+            }
+        }
+    }
+}

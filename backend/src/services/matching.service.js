@@ -6,6 +6,14 @@ export const LEVEL_MAP = {
   "Chuyên gia": 5
 };
 
+export const JOB_LEVEL_MAP = {
+  "Intern": 1,
+  "Fresher": 2,
+  "Junior": 3,
+  "Mid": 4,
+  "Senior": 5
+};
+
 const calcSkillMatch = (jobSkills, candidateSkills) => {
   const processedJobSkills = jobSkills.map(s => s.name.toLowerCase().trim());
   const processedCandidateSkills = candidateSkills.map(s => s.name.toLowerCase().trim());

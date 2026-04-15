@@ -5,7 +5,8 @@ import Application from "../models/Application.model.js";
 import { matchCandidateToJob } from "./matching.service.js";    
 
 export const recommendJobs = async (userId) => {
-  const candidate = await Candidate.findOne({ userId });
+  console.log("UserId:", userId);
+  const candidate = await Candidate.findOne({userId:userId});
   const jobs = await Job.find();
   
   // Lấy danh sách các jobId mà ứng viên đã ứng tuyển

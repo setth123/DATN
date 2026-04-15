@@ -3,11 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import authService from "../services/auth.service";
 import userAvatar from "../assets/user-avatar.svg";
 import NotificationBell from "./NotificationBell";
+import { useChat } from "../ChatContext";
 
 const Header = () => {
   const [currentUser, setCurrentUser] = useState(undefined);
   const navigate = useNavigate();
-
+  const {openChat} = useChat();
   useEffect(() => {
     const handleAuthChange = () => {
       const user = authService.getCurrentUser();
@@ -47,12 +48,18 @@ const Header = () => {
           >
             Việc làm
           </Link>
-          <Link
-            to="/about"
-            className="transition duration-300 hover:text-green-500"
-          >
-            Phỏng vấn AI
-          </Link>
+          {currentUser && (
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                openChat(null, "AI Assistant", "AI");
+              }}
+              className="transition duration-300 hover:text-green-500"
+            >
+              Trợ lý ảo
+            </a>
+          )}
           <Link
             to="/company/me"
             className="transition duration-300 hover:text-green-500"

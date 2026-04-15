@@ -1,36 +1,36 @@
 import * as jobService from "./job.service.js";
 import * as recommendedService from "./recommended.service.js";
 import * as candidateService from "./candidate.service.js";
-import { LEVEL_MAP } from "./matching.service.js"; // Import LEVEL_MAP để đảm bảo tính nhất quán
+import { LEVEL_MAP, JOB_LEVEL_MAP } from "./matching.service.js"; // Import LEVEL_MAP và JOB_LEVEL_MAP để đảm bảo tính nhất quán
 
 // Định nghĩa ánh xạ từ tên tool sang các hàm dịch vụ tương ứng
 const toolFunctionMap = {
   searchJobs: async ({ keyword, skill, level }) => {
     const query = {};
     if (keyword) query.keyword = keyword;
-    if (skill) query.skills = skill; // buildJobQuery trong job.query.service.js mong đợi 'skills' (số nhiều)
+    if (skill) query.skill = skill; // job.service.js getJobs mong đợi 'skill' (số ít)
     if (level) query.level = level;
 
     const result = await jobService.getJobs(query);
-    // Trả về dữ liệu job đã được đơn giản hóa cho AI
-    return result.data.map(job => ({
-      _id: job._id,
+    const jobs = result.data.map(job => ({
+      url: `http://localhost:5173/jobs/${job._id}`,
       title: job.title,
-      company: job.companyId?.name, // Sử dụng optional chaining vì companyId có thể chưa được populate đầy đủ
-      level: job.level, 
-      requiredSkills: job.requiredSkills
     }));
+    // Trả về dữ liệu job đã được đơn giản hóa cho AI
+    // Gemini yêu cầu tool output phải là một object, không phải là một array.
+    return { jobs };
   },
 
-  recommendJobsForCandidate: async ({ candidateId }) => {
+  recommendJobsForCandidate: async ({ userId }) => {
     // Giả định candidateId từ tool schema là userId của ứng viên
-    const result = await recommendedService.recommendJobs(candidateId);
-    return result.map(item => ({
-      _id: item.job._id,
+    const result = await recommendedService.recommendJobs(userId);
+    const recommendedJobs = result.map(item => ({
+      url: `http://localhost:5173/jobs/${item.job._id}`,
       title: item.job.title,
-      company: item.job.companyId?.name, // Sử dụng optional chaining
       matchScore: item.matchScore
     }));
+    // Gemini yêu cầu tool output phải là một object, không phải là một array.
+    return { recommendedJobs };
   },
 
   recommendCandidatesForJob: async ({ jobId }, userId) => {
@@ -40,38 +40,38 @@ const toolFunctionMap = {
     }
     const result = await recommendedService.recommendCandidatesForJob(userId, jobId);
     return {
-      job: {
-        _id: result.job._id,
-        title: result.job.title
-      },
       candidates: result.candidates.map(candidate => ({
-        _id: candidate.candidate._id,
-        fullName: candidate.candidate.fullName,
+        url: `http://localhost:5173/candidate/${candidate.candidate._id}`,
+        fullname: candidate.candidate.fullName,
         title: candidate.candidate.title,
         matchScore: candidate.matchScore
       }))
     };
   },
 
-  analyzeCandidateGapForJob: async ({ candidateId, jobId }) => {
+  analyzeCandidateGapForJob: async ({ userId, jobId }) => {
     // Giả định candidateId từ tool schema là userId của ứng viên
     const job = await jobService.getJobById(jobId);
-    const candidate = await candidateService.getMyCandidateProfile(candidateId); // Giả định candidateId là userId
+    const candidate = await candidateService.getMyCandidateProfile(userId); // Giả định candidateId là userId
 
     if (!job || !candidate) {
       return { error: "Không tìm thấy Job hoặc Candidate để phân tích khoảng cách." };
     }
 
     const missingSkills = job.requiredSkills.filter(
-      skill => !candidate.skills?.includes(skill) // Sử dụng optional chaining
+      jobSkill => !candidate.skills?.some(candidateSkill => candidateSkill.name.toLowerCase() === jobSkill.name.toLowerCase())
     );
 
     let levelGap = 0;
-    const candidateLevel = LEVEL_MAP[candidate.level?.toLowerCase()] || 0;
-    const jobLevel = LEVEL_MAP[job.level?.toLowerCase()] || 0;
+    // Sử dụng JOB_LEVEL_MAP cho cấp độ tổng thể của ứng viên và công việc
+    // Giả định candidate.title có thể ánh xạ tới một trong các cấp độ trong JOB_LEVEL_MAP
+    // Đây là một giả định cần được xác nhận hoặc cải thiện trong mô hình dữ liệu của Candidate
+    const candidateOverallLevel = JOB_LEVEL_MAP[candidate.title] || 0;
+    const jobOverallLevel = JOB_LEVEL_MAP[job.level] || 0;
 
-    if (candidateLevel < jobLevel) {
-      levelGap = jobLevel - candidateLevel;
+    // So sánh cấp độ tổng thể
+    if (candidateOverallLevel < jobOverallLevel) {
+      levelGap = jobOverallLevel - candidateOverallLevel;
     }
 
     return {

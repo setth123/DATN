@@ -1,8 +1,7 @@
 import {Server} from 'socket.io';
 import {verifyToken} from '../utils/jwt.js';
 import Conversation from '../models/Conversation.model.js';
-import {sendMessage} from './message.service.js';
-import { handleAIMessage } from './message.service.js';
+import {sendMessage,handleAIMessage} from './message.service.js';
 
 const onlineUsers=new Map();
 let io;
@@ -15,7 +14,8 @@ export const getIo = () => {
 export const initSocket=(server)=>{
     io=new Server(server,{
         cors:{
-            origin:"*",
+            origin: "http://localhost:5173",
+            methods:["GET","POST"],
             credentials:true
         }
     });
@@ -62,12 +62,17 @@ export const initSocket=(server)=>{
         
         //send message event
         socket.on("send_message",async(data)=>{
-            const {userId,conversationId,text}=data;
+            const {conversationId,text,isAI}=data;
+            const userId = socket.user.userId; // Luôn sử dụng userId từ token đã xác thực để tăng cường bảo mật.
             if(!conversationId||!text)return;
             try{
                 // Pass io to the service function, and let the service handle emission
+                if(!isAI)
                 await sendMessage(userId,conversationId,text); // io is retrieved internally by messageService
                 // The service function now emits 'new_message', so no need to emit here
+                else handleAIMessage({userId, conversationId, text, onChunk:(chunk)=>{
+                    socket.emit("ai_chunk",{conversationId,chunk});
+                }});
 
             }catch(err){
                 console.error("Error sending message: ",err);
@@ -75,33 +80,11 @@ export const initSocket=(server)=>{
             }
         })
         
-        //AI message event
-        socket.on("send_ai_message", async (data) => {
-        const { conversationId, text, systemInstruction } = data;
-        if (!text) return;
-
-        try {
-            const result = await handleAIMessage({
-            conversationId,
-            userId: socket.user.id,
-            text,
-            systemInstruction,
-            onChunk: (chunk) => { // Pass the onChunk callback for streaming
-                socket.emit("ai_chunk", { conversationId, chunk });
-            }
-            });
-
-            // The AI message is now emitted via 'new_message' from message.service.js
-        } catch (err) {
-            console.error("AI chat error:", err);
-            socket.emit("ai_error", "AI failed to respond");
-        }
-        });
 
         //disconnect
         socket.on('disconnect',()=>{
             console.log('Client disconnected:',socket.id);
-            onlineUsers.delete(socket.user.id);
+            onlineUsers.delete(socket.user.userId);
         });
 
     });

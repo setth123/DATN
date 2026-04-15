@@ -25,3 +25,11 @@ Create two level menu for some section
 
 
 
+Luồng nhắn tin AI:
+Người dùng chọn nhắn tin với AI->Đặt ChatTarget={null,"AI Assistant",'AI'}
+->Open ChatWidget (chưa có gì thì khởi tạo rỗng)->Kiểm tra kiểu nếu là AI thì bắn event sendMessage với isAI bằng true khi gửi tin nhắn đầu tiên->
+sau đó gán ConversationId bằng kết quả trả về (lưu vào localStorage với currentUser và gán TTL=900)->sau đó mỗi lần mở ChatWidget sẽ sử dụng key này (cần thêm cơ chế tự động xóa)
+->
+Limit AI Context to lastest 20 messages
+Handle sendFIle to AI when send messages (docx/pdf only, we will use a library to extract context)
+review lại các tool

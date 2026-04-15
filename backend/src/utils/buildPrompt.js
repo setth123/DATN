@@ -1,5 +1,6 @@
 import { runGemini } from "../services/gemini.service.js"; // Đã sửa đường dẫn import
-
+import {PDFParse} from "pdf-parse";
+import mammoth from "mammoth";
 export function buildPrompt(messages,systemInstruction, summary,text) {
   let prompt = `SYSTEM:\n${systemInstruction}\n\n`;
 
@@ -42,4 +43,23 @@ export async function maybeSummarize(conversation) {
 
   conversation.summary = summary;
   conversation.messages = conversation.messages.slice(-6);
+}
+export async function getPDFContext(filePath) {
+    try {
+        const parser=new PDFParse({url: filePath});
+        const res=await parser.getText();
+        return res.text;
+    } catch (err) {
+        console.error("Error extracting PDF text:", err);
+        return "";
+    }
+}
+export async function getDOCXContext(filePath) {
+    try {
+        const data = await mammoth.extractRawText({ path: filePath });
+        return data.value;
+    } catch (err) {
+        console.error("Error extracting DOCX text:", err);
+        return "";
+    }
 }

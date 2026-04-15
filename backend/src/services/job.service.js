@@ -65,6 +65,17 @@ export const getJobs = async (query) => {
     }
   }
 
+  // Handle skill search (from Gemini tool)
+  if (query.skill && query.skill.name) {
+    const skillConditions = {
+      "requiredSkills.name": { $regex: query.skill.name, $options: "i" }
+    };
+    if (query.skill.level) {
+      skillConditions["requiredSkills.level"] = query.skill.level;
+    }
+    mainFilterConditions.push(skillConditions);
+  }
+
   // Handle location search
   if (query.locations) {
     const locationParts = query.locations.split(",").map(part => part.trim());
