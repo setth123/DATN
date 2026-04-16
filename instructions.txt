@@ -33,7 +33,7 @@ sau đó gán ConversationId bằng kết quả trả về (lưu vào localStora
 Limit AI Context to lastest 20 messages
 review lại các tool
 sử dụng gemma4 cho chatbot, gemini 3.1 flash live preview cho pv 
-điều chỉnh system instruction cho phù hợp và nghiên cứu lại gemini service
+hotfix cot gemma4: thêm vào system instructions ép mô hình phải mở/ đóng phần suy nghĩ trong thẻ riêng, sau đó xoá phần suy nghĩ bằng xử lý chuỗi.
 
 
 export const runGemini = async (messages, onChunk, userId, systemInstruction) => {
