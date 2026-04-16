@@ -16,10 +16,10 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
     const chatHistory = [];
 
     // Thêm system instruction làm tin nhắn đầu tiên trong lịch sử chat
-    if (systemInstruction) {
-      chatHistory.push({ role: "user", parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}` }] });
-      chatHistory.push({ role: "model", parts: [{ text: "Tôi đã hiểu các quy tắc và hướng dẫn bạn đưa ra." }] });
-    }
+    //if (systemInstruction) {
+      //chatHistory.push({ role: "user", parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}` }] });
+      //chatHistory.push({ role: "model", parts: [{ text: "Tôi đã hiểu các quy tắc và hướng dẫn bạn đưa ra." }] });
+   // }
 
     // Thêm các tin nhắn cuộc trò chuyện trước đó vào lịch sử
     // Loại trừ tin nhắn người dùng mới nhất, vì nó sẽ được gửi qua sendMessageStream riêng
