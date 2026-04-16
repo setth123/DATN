@@ -84,10 +84,18 @@ const toolFunctionMap = {
 };
 
 export const executeTool = async (toolName, args, userId) => {
-  const func = toolFunctionMap[toolName];
-  if (!func) {
-    throw new Error(`Không tìm thấy hàm tool '${toolName}'.`);
+  try {
+    const func = toolFunctionMap[toolName];
+    if (!func) {
+      // Trả về định dạng mà AI hiểu được thay vì throw error làm sập luồng
+      return { error: `Tool ${toolName} không tồn tại.` };
+    }
+    
+    // Thực thi hàm
+    const result = await func(args, userId);
+    return result;
+  } catch (error) {
+    console.error(`Lỗi thực thi tool ${toolName}:`, error);
+    return { error: error.message || "Lỗi hệ thống khi thực thi công cụ." };
   }
-  // Truyền userId cho hàm tool nếu nó cần
-  return await func(args, userId);
 };

@@ -31,8 +31,85 @@ Người dùng chọn nhắn tin với AI->Đặt ChatTarget={null,"AI Assistant
 sau đó gán ConversationId bằng kết quả trả về (lưu vào localStorage với currentUser và gán TTL=900)->sau đó mỗi lần mở ChatWidget sẽ sử dụng key này (cần thêm cơ chế tự động xóa)
 ->
 Limit AI Context to lastest 20 messages
-Handle sendFIle to AI when send messages (docx/pdf only, we will use a library to extract context)
 review lại các tool
-Thêm tin nhắn chào bắt đầu mỗi phiên chat {"role":"model","content":"Xin chào tôi là trợ lý tuyển dụng AI của bạn. Tôi có thể giúp gì cho bạn hôm nay?"}] và xoá tn chào phía be nếu có thể không thêm vào lịch sử phiên chat nếu có thể
 sử dụng gemma4 cho chatbot, gemini 3.1 flash live preview cho pv 
 điều chỉnh system instruction cho phù hợp và nghiên cứu lại gemini service
+
+
+export const runGemini = async (messages, onChunk, userId, systemInstruction) => {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemma-4-31b-it", 
+      systemInstruction: systemInstruction, 
+      tools: tools 
+    });
+
+    // 2. Chuyển đổi lịch sử tin nhắn sang định dạng Gemini (loại bỏ tin nhắn cuối cùng để gửi riêng)
+    const chatHistory = messages.slice(0, -1).map(msg => {
+  return {
+    role: msg.role === "user" ? "user" : "model",
+    parts: Array.isArray(msg.parts) 
+      ? msg.parts 
+      : [{ text: msg.content || "" }]
+  };
+});
+
+    const chat = model.startChat({
+      history: chatHistory
+    });
+
+    // 3. Gửi tin nhắn mới nhất
+    const latestUserMessageContent = messages[messages.length - 1].content;
+    console.log(JSON.stringify(chatHistory, null, 2))
+    let result = await chat.sendMessageStream(latestUserMessageContent);
+
+    // Hàm đệ quy hoặc vòng lặp để xử lý phản hồi (bao gồm cả Tool Calling)
+    await handleStream(result, chat, onChunk, userId);
+
+  } catch (error) {
+    handleError(error, onChunk);
+  }
+};
+
+/**
+ * Hàm phụ trách xử lý Stream và tự động gọi lại nếu Gemini yêu cầu sử dụng Tool
+ */
+async function handleStream(result, chat, onChunk, userId) {
+  let functionCalls = [];
+  let fullTextResponse = ""; // Lưu lại để kiểm tra xem có text thật không
+
+  for await (const chunk of result.stream) {
+    try {
+      const chunkText = chunk.text();
+      if (chunkText && chunkText.trim() !== "") { // Chỉ gửi nếu có text thật
+        fullTextResponse += chunkText;
+        onChunk(chunkText);
+      }
+    } catch (e) {
+      // Chunk này là function call, không có text, bỏ qua lỗi chunk.text()
+    }
+
+    const calls = chunk.functionCalls();
+    if (calls && calls.length > 0) {
+      functionCalls = calls;
+    }
+  }
+
+  if (functionCalls.length > 0) {
+    const toolResponses = [];
+    for (const fnCall of functionCalls) {
+      const functionOutput = await executeTool(fnCall.name, fnCall.args, userId);
+      toolResponses.push({
+        functionResponse: {
+          name: fnCall.name,
+          response: functionOutput
+        }
+      });
+    }
+
+    // QUAN TRỌNG: Gửi trả kết quả tool
+    // SDK sẽ tự động khớp toolResponses này với functionCalls trước đó trong bộ nhớ của 'chat'
+    const secondResult = await chat.sendMessageStream(toolResponses);
+    await handleStream(secondResult, chat, onChunk, userId);
+  }
+}

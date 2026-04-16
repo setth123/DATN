@@ -1,6 +1,7 @@
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { tools } from "../ai/tools.schema.js";
-import { executeTool } from "./toolExecutor.service.js"; // Import the new tool executor
+import { executeTool } from "./toolExecutor.service.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -8,103 +9,112 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
   try {
     const model = genAI.getGenerativeModel({
       model: "gemma-4-31b-it",
-      tools: tools, // Pass tools to the model
-      systemInstruction: systemInstruction
+      systemInstruction: systemInstruction,
+      tools: tools
     });
-    
-      
-    const chatHistory = [];
 
-    // Thêm system instruction làm tin nhắn đầu tiên trong lịch sử chat
-    //if (systemInstruction) {
-      //chatHistory.push({ role: "user", parts: [{ text: `SYSTEM_INSTRUCTION: ${systemInstruction}` }] });
-      //chatHistory.push({ role: "model", parts: [{ text: "Tôi đã hiểu các quy tắc và hướng dẫn bạn đưa ra." }] });
-   // }
-
-    // Thêm các tin nhắn cuộc trò chuyện trước đó vào lịch sử
-    // Loại trừ tin nhắn người dùng mới nhất, vì nó sẽ được gửi qua sendMessageStream riêng
-    messages.slice(0, -1).forEach(msg => {
-      chatHistory.push({
-        role: msg.role === "user" ? "user" : "model", // Gemini API mong đợi 'user' hoặc 'model'
+    // CHỈNH SỬA 1: Lọc sạch lịch sử chat, loại bỏ các tin nhắn rỗng hoàn toàn
+    const chatHistory = messages
+      .filter(msg => msg.content && msg.content.trim() !== "")
+      .map(msg => ({
+        role: msg.role === "user" ? "user" : "model",
         parts: [{ text: msg.content }]
-      });
-    });
+      }));
 
-    const chat = model.startChat({
-      history: chatHistory
-    });
+    const chat = model.startChat({ history: chatHistory });
 
-    // Gửi tin nhắn người dùng mới nhất
-    const latestUserMessageContent = messages[messages.length - 1].content;
-    const result = await chat.sendMessageStream(latestUserMessageContent);
+    const latestMessage = messages[messages.length - 1].content;
+    const result = await chat.sendMessageStream(latestMessage);
 
-    let fullTextResponse = "";
+    // CHỈNH SỬA 2: handleStream bây giờ sẽ TRẢ VỀ văn bản cuối cùng thu thập được
+    const finalAiResponse = await handleStream(result, chat, onChunk, userId);
 
-    for await (const chunk of result.stream) {
-      const chunkText = chunk.text();
-      if (chunkText) {
-        fullTextResponse += chunkText;
-        onChunk(chunkText); // Stream phản hồi văn bản
-      }
+    // CHỈNH SỬA 3: Sau khi gọi xong hết Tool, hãy lưu finalAiResponse vào Database/State của bạn
+    // Ví dụ: await saveMessageToDB(userId, "model", finalAiResponse);
+    return finalAiResponse;
 
-      const functionCalls = chunk.functionCalls();
-      if (functionCalls && functionCalls.length > 0) {
-        for (const fnCall of functionCalls) {
-          const { name, args } = fnCall;
-          console.log(`Gemini đã gọi hàm: ${name} với các đối số:`, args);
+  } catch (error) {
+    handleError(error, onChunk);
+  }
+};
 
-          try {
-            const functionOutput = await executeTool(name, args, userId); // Truyền userId tới executeTool
-            // Sau khi thực thi tool, gửi phản hồi trở lại model
-            const toolResponseResult = await chat.sendMessageStream([{
-              functionResponse: {
-                name: name,
-                response: functionOutput
-              }
-            }]);
+async function handleStream(result, chat, onChunk, userId) {
+  let accumulatedText = ""; 
+  let functionCalls = null;
+  
+  // Flag để đánh dấu đã tìm thấy đoạn tiếng Việt cần hiển thị chưa
+  let isVietnameseStarted = false;
+  // Regex kiểm tra ký tự tiếng Việt đặc trưng
+  const viRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
 
-            // Xử lý phản hồi từ Gemini sau khi thực thi tool
-            for await (const toolChunk of toolResponseResult.stream) {
-              const toolChunkText = toolChunk.text();
-              if (toolChunkText) {
-                fullTextResponse += toolChunkText;
-                onChunk(toolChunkText);
-              }
-            }
-          } catch (error) {
-            console.error(`Lỗi khi thực thi tool ${name}:`, error);
-            // Gửi lỗi trở lại Gemini nếu thực thi tool thất bại
-            const errorResponseResult = await chat.sendMessageStream([{
-              functionResponse: {
-                name: name,
-                response: { error: error.message }
-              }
-            }]);
-            for await (const errorChunk of errorResponseResult.stream) {
-              const errorChunkText = errorChunk.text();
-              if (errorChunkText) {
-                fullTextResponse += errorChunkText;
-                onChunk(errorChunkText);
-              }
-            }
+  for await (const chunk of result.stream) {
+    const calls = chunk.functionCalls();
+    if (calls && calls.length > 0) {
+      functionCalls = calls;
+      continue; 
+    }
+
+    try {
+      let text = chunk.text();
+      if (text) {
+        // Nếu chưa bắt đầu đoạn tiếng Việt, ta kiểm tra xem chunk này có chứa dấu hiệu tiếng Việt không
+        if (!isVietnameseStarted) {
+          if (viRegex.test(text)) {
+            isVietnameseStarted = true;
+            
+            // Tìm vị trí ký tự tiếng Việt đầu tiên để cắt bỏ rác phía trước trong chính chunk đó
+            const match = text.match(viRegex);
+            const firstViIndex = text.lastIndexOf('\n', match.index);
+            text = text.substring(firstViIndex !== -1 ? firstViIndex + 1 : 0);
+          }
+        }
+
+        // Chỉ gửi về UI và tích lũy nếu đã xác định đây là phần tiếng Việt
+        if (isVietnameseStarted && text.trim() !== "") {
+          // Vẫn giữ lại logic replace các câu mồi tiếng Anh nếu chúng lẫn vào sau đó
+          let cleanText = text.replace(/^(The user wants to|Following the|I will call|I should|Based on|Rule:).*$/gim, "");
+          
+          if (cleanText) {
+            accumulatedText += cleanText;
+            onChunk(cleanText); 
           }
         }
       }
-    }
-    return fullTextResponse;
-  } catch (error) {
-    // Bắt các lỗi từ API của Gemini, đặc biệt là lỗi 503 Service Unavailable
-    if (error.message && (error.message.includes('503') || /service is currently unavailable/i.test(error.message))) {
-      console.error("Gemini service is unavailable (503).", error);
-      const errorMessage = "Xin lỗi, dịch vụ AI hiện đang tạm thời quá tải. Vui lòng thử lại sau ít phút.";
-      onChunk(errorMessage);
-      return errorMessage;
-    } else {
-      // Xử lý các lỗi khác
-      console.error("An error occurred during the Gemini API call:", error);
-      const errorMessage = "Đã có lỗi không mong muốn xảy ra khi giao tiếp với AI. Vui lòng thử lại.";
-      onChunk(errorMessage);
-      return errorMessage;
+    } catch (e) {
+      // Chunk không chứa text
     }
   }
-};
+
+  if (functionCalls) {
+    const toolResponses = [];
+    for (const fnCall of functionCalls) {
+      const output = await executeTool(fnCall.name, fnCall.args, userId);
+      toolResponses.push({
+        functionResponse: { name: fnCall.name, response: output }
+      });
+    }
+
+    const nextResult = await chat.sendMessageStream(toolResponses);
+    
+    // Lưu ý: Với đệ quy, ta cần truyền trạng thái hoặc để lượt gọi mới tự xác định lại
+    const nextText = await handleStream(nextResult, chat, onChunk, userId);
+    accumulatedText += nextText;
+  }
+
+  return accumulatedText;
+}
+/**
+ * Hàm xử lý lỗi tập trung
+ */
+function handleError(error, onChunk) {
+  console.error("Gemini API Error:", error);
+  let userFriendlyMsg = "Đã có lỗi xảy ra khi kết nối với AI.";
+
+  if (error.message?.includes("503") || /unavailable/i.test(error.message)) {
+    userFriendlyMsg = "Dịch vụ AI đang quá tải (503). Bạn vui lòng thử lại sau giây lát nhé.";
+  } else if (error.message?.includes("429")) {
+    userFriendlyMsg = "Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi một chút.";
+  }
+
+  onChunk(userFriendlyMsg);
+}

@@ -11,6 +11,14 @@ import authService from '../services/auth.service';
 import linkify from '../utils/linkify.jsx';
 
 const ChatWidget = () => {
+    const aiGreetingMessage = {
+        _id: 'ai-greeting-initial', // Unique ID for the greeting message
+        role: 'model',
+        content: 'Xin chào tôi là trợ lý tuyển dụng AI của bạn. Tôi có thể giúp gì cho bạn hôm nay?',
+        sender: { _id: 'AI', name: 'AI Assistant' }, // Consistent sender info
+        createdAt: new Date().toISOString(), // Timestamp
+    };
+
     const { showChatWidget, chatTarget, closeChat } = useChat();
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
@@ -71,14 +79,17 @@ const ChatWidget = () => {
 
         const getMessages = async () => {
             try {
+                const res = await messageService.getMessages(conversationId, 50, null, isAI);
+                const history = res.data.data || [];
+
                 if (isAI) {
-                    const res = await messageService.getMessages(conversationId, 50, null, true);
-                    // Lịch sử tin nhắn AI từ Redis đã theo đúng thứ tự thời gian.
-                    // Định dạng phản hồi là { data: [...] }, vì vậy chúng ta chỉ cần gán nó.
-                    setMessages(res.data.data || []);
+                    // CHỈ HIỆN LỜI CHÀO KHI LÀ AI:
+                    // Gộp lời chào mặc định + lịch sử chat từ Server
+                    setMessages([aiGreetingMessage, ...history]);
                 } else {
-                    const res = await messageService.getMessages(conversationId);
-                    setMessages(res.data.data); // Reverse to show oldest first
+                    // Chat với người dùng/tuyển dụng bình thường:
+                    // Chỉ hiện lịch sử chat, không có lời chào AI
+                    setMessages(history);
                 }
             } catch (error) {
                 console.error("Failed to fetch messages", error);
