@@ -7,10 +7,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 export const runGemini = async (messages, onChunk, userId, systemInstruction) => {
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      tools: tools // Pass tools to the model
+      model: "gemma-4-31b-it",
+      tools: tools, // Pass tools to the model
+      systemInstruction: systemInstruction
     });
-
+    
+      
     const chatHistory = [];
 
     // Thêm system instruction làm tin nhắn đầu tiên trong lịch sử chat
