@@ -33,3 +33,6 @@ sau đó gán ConversationId bằng kết quả trả về (lưu vào localStora
 Limit AI Context to lastest 20 messages
 Handle sendFIle to AI when send messages (docx/pdf only, we will use a library to extract context)
 review lại các tool
+Thêm tin nhắn chào bắt đầu mỗi phiên chat {"role":"model","content":"Xin chào tôi là trợ lý tuyển dụng AI của bạn. Tôi có thể giúp gì cho bạn hôm nay?"}] và xoá tn chào phía be nếu có thể không thêm vào lịch sử phiên chat nếu có thể
+sử dụng gemma4 cho chatbot, gemini 3.1 flash live preview cho pv 
+điều chỉnh system instruction cho phù hợp và nghiên cứu lại gemini service
