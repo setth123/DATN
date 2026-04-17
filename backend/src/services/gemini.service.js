@@ -41,11 +41,6 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
 async function handleStream(result, chat, onChunk, userId) {
   let accumulatedText = ""; 
   let functionCalls = null;
-  
-  // Flag để đánh dấu đã tìm thấy đoạn tiếng Việt cần hiển thị chưa
-  let isVietnameseStarted = false;
-  // Regex kiểm tra ký tự tiếng Việt đặc trưng
-  const viRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
 
   for await (const chunk of result.stream) {
     const calls = chunk.functionCalls();
@@ -57,27 +52,11 @@ async function handleStream(result, chat, onChunk, userId) {
     try {
       let text = chunk.text();
       if (text) {
-        // Nếu chưa bắt đầu đoạn tiếng Việt, ta kiểm tra xem chunk này có chứa dấu hiệu tiếng Việt không
-        if (!isVietnameseStarted) {
-          if (viRegex.test(text)) {
-            isVietnameseStarted = true;
-            
-            // Tìm vị trí ký tự tiếng Việt đầu tiên để cắt bỏ rác phía trước trong chính chunk đó
-            const match = text.match(viRegex);
-            const firstViIndex = text.lastIndexOf('\n', match.index);
-            text = text.substring(firstViIndex !== -1 ? firstViIndex + 1 : 0);
-          }
-        }
-
-        // Chỉ gửi về UI và tích lũy nếu đã xác định đây là phần tiếng Việt
-        if (isVietnameseStarted && text.trim() !== "") {
-          // Vẫn giữ lại logic replace các câu mồi tiếng Anh nếu chúng lẫn vào sau đó
-          let cleanText = text.replace(/^(The user wants to|Following the|I will call|I should|Based on|Rule:).*$/gim, "");
-          
-          if (cleanText) {
+        const match = text.match(/\[ANSWER\]([\s\S]*)$/);
+        const cleanText=match[1].trim();
+        if (cleanText) {
             accumulatedText += cleanText;
             onChunk(cleanText); 
-          }
         }
       }
     } catch (e) {
