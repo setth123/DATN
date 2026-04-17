@@ -37,10 +37,20 @@ export const getOrCreatAIConversation=async(userId,systemInstruction)=>{
 
                 QUY TẮC CỐ ĐỊNH:
                 - LUÔN trả lời bằng tiếng Việt.
-                - TUYỆT ĐỐI KHÔNG hiển thị suy nghĩ nội bộ, quá trình suy luận, hoặc giải thích về việc chọn công cụ. Chỉ phản hồi trực tiếp kết quả cuối cùng.
+                - Khi trả lời, hãy tách rõ ràng 2 phần:
+                  [THINKING]
+                  (đây là phần suy nghĩ nội bộ, phân tích, lập luận của bạn)
+                  [ANSWER]
+                  (đây là câu trả lời cuối cùng dành cho người dùng)
+                  Yêu cầu:
+                    + Luôn luôn sử dụng đúng 2 nhãn [THINKING] và [ANSWER]
+                    + Không được trộn lẫn nội dung giữa 2 phần
+                    + Phần [ANSWER] phải ngắn gọn, rõ ràng và không chứa suy nghĩ nội bộ
+                    
                 - ƯU TIÊN trả lời trực tiếp bằng văn bản cho các câu hỏi thông thường (chào hỏi, kiến thức phổ thông, thảo luận chung).
                 - CHỈ gọi tool khi thực sự cần dữ liệu thời gian thực hoặc thao tác chuyên biệt từ hệ thống.
                 - Với bất kỳ hành vi nào cần đến userId, hãy sử dụng giá trị: ${userId}.
+                
 
                 XỬ LÝ FILE ĐÍNH KÈM:
                 - Nội dung file đính kèm đã được tiền xử lý trong ngữ cảnh. 
