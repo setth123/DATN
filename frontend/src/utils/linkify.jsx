@@ -19,15 +19,22 @@ const linkify = (text) => {
   return parts.map((part, index) => {
     // Nếu một phần khớp với regex URL, hãy tạo một liên kết
     if (part.match(urlRegex)) {
+      let cleanUrl=part;
+      if (cleanUrl.startsWith('(') && cleanUrl.endsWith(')')) {
+        cleanUrl = cleanUrl.slice(1, -1);
+      }
+      else if (cleanUrl.endsWith(')') && !cleanUrl.includes('(')) {
+        cleanUrl = cleanUrl.slice(0, -1);
+      }
       return (
         <a
           key={index}
-          href={part}
+          href={cleanUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-400 hover:text-blue-300 underline"
         >
-          {part}
+          {cleanUrl}
         </a>
       );
     }

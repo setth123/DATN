@@ -41,6 +41,7 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
 async function handleStream(result, chat, onChunk, userId) {
   let accumulatedText = ""; 
   let functionCalls = null;
+  let isAnswerStarted = false;
 
   for await (const chunk of result.stream) {
     const calls = chunk.functionCalls();
@@ -52,11 +53,21 @@ async function handleStream(result, chat, onChunk, userId) {
     try {
       let text = chunk.text();
       if (text) {
-        const match = text.match(/\[ANSWER\]([\s\S]*)$/);
-        const cleanText=match[1].trim();
-        if (cleanText) {
-            accumulatedText += cleanText;
-            onChunk(cleanText); 
+        if (!isAnswerStarted) {
+          const index = text.indexOf("[ANSWER]");
+          if (index !== -1) {
+            isAnswerStarted = true;
+            // Lấy phần text sau tag "[ANSWER]"
+            const remainingText = text.substring(index + "[ANSWER]".length); 
+            if (remainingText.trim() !== "") { // Chỉ gửi nếu có nội dung thực sự sau tag
+              accumulatedText += remainingText;
+              onChunk(remainingText);
+            }
+          }
+        } else {
+          // Khi đã tìm thấy "[ANSWER]", gửi tất cả các chunk text tiếp theo.
+          accumulatedText += text;
+          onChunk(text);
         }
       }
     } catch (e) {

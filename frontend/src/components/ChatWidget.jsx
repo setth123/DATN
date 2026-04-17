@@ -20,7 +20,9 @@ const ChatWidget = () => {
     };
 
     const { showChatWidget, chatTarget, closeChat } = useChat();
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState(
+        chatTarget?.targetType === 'AI' ? [aiGreetingMessage] : []
+    );
     const [text, setText] = useState('');
     const [conversationId, setConversationId] = useState(null);
     const messagesEndRef = useRef(null);
@@ -79,14 +81,15 @@ const ChatWidget = () => {
 
         const getMessages = async () => {
             try {
+                setMessages([aiGreetingMessage]);
                 const res = await messageService.getMessages(conversationId, 50, null, isAI);
                 const history = res.data.data || [];
 
                 if (isAI) {
                     // CHỈ HIỆN LỜI CHÀO KHI LÀ AI:
                     // Gộp lời chào mặc định + lịch sử chat từ Server
-                    setMessages([aiGreetingMessage, ...history]);
-                } else {
+                    setMessages([messages, ...history]);
+                } else {    
                     // Chat với người dùng/tuyển dụng bình thường:
                     // Chỉ hiện lịch sử chat, không có lời chào AI
                     setMessages(history);

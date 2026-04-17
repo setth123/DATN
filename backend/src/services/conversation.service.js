@@ -43,7 +43,7 @@ export const getOrCreatAIConversation=async(userId,systemInstruction)=>{
                   [ANSWER]
                   (đây là câu trả lời cuối cùng dành cho người dùng)
                   Yêu cầu:
-                    + Luôn luôn sử dụng đúng 2 nhãn [THINKING] và [ANSWER]
+                    + Chỉ được tồn tại 1 thẻ [THINKING] và 1 thẻ [ANSWER] trong mỗi phản hồi. [THINKING] phải luôn đứng trước [ANSWER].
                     + Không được trộn lẫn nội dung giữa 2 phần
                     + Phần [ANSWER] phải ngắn gọn, rõ ràng và không chứa suy nghĩ nội bộ
                     
