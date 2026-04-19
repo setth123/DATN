@@ -62,6 +62,8 @@ const logout = () => {
   localStorage.removeItem("user");
   localStorage.removeItem("company");
   localStorage.removeItem("candidate");
+  localStorage.removeItem("candidateProfile");
+  localStorage.removeItem("ai_conversation_id");
   window.dispatchEvent(new Event("authChange")); // Thông báo cho các component khác về việc đã đăng xuất
 };
 

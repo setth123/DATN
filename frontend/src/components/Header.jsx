@@ -4,10 +4,13 @@ import authService from "../services/auth.service";
 import userAvatar from "../assets/user-avatar.svg";
 import NotificationBell from "./NotificationBell";
 import { useChat } from "../ChatContext";
+import { useInterview } from "../InterviewContext";
 
 const Header = () => {
   const [currentUser, setCurrentUser] = useState(undefined);
+  const [isAiMenuOpen, setIsAiMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { openInterviewWidget } = useInterview();
   const {openChat} = useChat();
   useEffect(() => {
     const handleAuthChange = () => {
@@ -38,7 +41,7 @@ const Header = () => {
         <div className="text-2xl font-bold text-green-500">
           <Link to="/">Jobeasy</Link>
         </div>
-        <nav className="hidden space-x-6 md:flex">
+        <nav className="hidden items-center space-x-6 md:flex">
           <Link to="/" className="transition duration-300 hover:text-green-500">
             Trang chủ
           </Link>
@@ -49,16 +52,43 @@ const Header = () => {
             Việc làm
           </Link>
           {currentUser && (
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                openChat(null, "AI Assistant", "AI");
-              }}
-              className="transition duration-300 hover:text-green-500"
+            <div
+              className="relative"
+              onMouseEnter={() => setIsAiMenuOpen(true)}
+              onMouseLeave={() => setIsAiMenuOpen(false)}
             >
-              Trợ lý ảo
-            </a>
+              <button className="transition duration-300 hover:text-green-500">
+                Trợ lý ảo
+              </button>
+              {isAiMenuOpen && (
+                <div className="absolute left-1/2 top-full z-20 w-48 -translate-x-1/2 rounded-md bg-gray-700 shadow-lg pt-2">
+                  <ul className="py-1">
+                    <li>
+                      <button
+                        className="block w-full px-4 py-2 text-left text-sm text-white transition duration-300 hover:text-green-500"
+                        onClick={() => {
+                          openInterviewWidget();
+                          setIsAiMenuOpen(false);
+                        }}
+                      >
+                        Phỏng vấn AI
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          openChat(null, "AI Assistant", "AI");
+                          setIsAiMenuOpen(false);
+                        }}
+                        className="block w-full px-4 py-2 text-left text-sm text-white transition duration-300 hover:text-green-500"
+                      >
+                        Chat với trợ lý ảo
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
           <Link
             to="/company/me"

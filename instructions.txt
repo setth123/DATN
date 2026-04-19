@@ -30,11 +30,19 @@ Người dùng chọn nhắn tin với AI->Đặt ChatTarget={null,"AI Assistant
 ->Open ChatWidget (chưa có gì thì khởi tạo rỗng)->Kiểm tra kiểu nếu là AI thì bắn event sendMessage với isAI bằng true khi gửi tin nhắn đầu tiên->
 sau đó gán ConversationId bằng kết quả trả về (lưu vào localStorage với currentUser và gán TTL=900)->sau đó mỗi lần mở ChatWidget sẽ sử dụng key này (cần thêm cơ chế tự động xóa)
 ->
-Limit AI Context to lastest 20 messages
-review lại các tool
-sử dụng gemma4 cho chatbot, gemini 3.1 flash live preview cho pv 
-hotfix cot gemma4: thêm vào system instructions ép mô hình phải mở/ đóng phần suy nghĩ trong thẻ riêng, sau đó xoá phần suy nghĩ bằng xử lý chuỗi hoặc ép mô hình trả về json (không thực sự khuyến nghị).
-
+gemini 3.1 flash live preview cho pv :
+đầu vào: nhận file jd công việc và cv, extract text làm systemInstruction cho mô hình
+mô hình: sẽ có systeminstruction riêng stream response ưu tiên qua websocket (hoặc nếu không ổn dùng socket.io)
+Prompt Engineering:
+  Role: Bạn là một nhà tuyển dụng cấp cao
+  Context: Nội dung CV + Nội dung JD.
+  Rules: "Chỉ hỏi từng câu một", "Đánh giá dựa trên STAR", "Ngắt lời nếu ứng viên lan man".
+Thiết lập kết nối Live: FE gửi yêu cầu bắt đầu phiên pv, NodeJS khởi tạo kết nối WS đến điểm cuối
+: wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent
+Gửi setup message chứa systeminstruction. AI chào hỏi và đưa câu hỏi đầu tiên -> FE dùng Web Audio API để stream âm thanh trực tiếp lên Gemini.
+-> Gemini phản hồi bằng luồng audio. Gửi một prompt ẩn gửi một prompt ẩn: "Dựa trên cuộc hội thoại trên, hãy xuất ra file JSON đánh giá các kỹ năng của ứng viên
+-> Hiển thị bảng điểm và nhận xét cho người dùng trên ReactJS.
+Lỗi: Sau một tuần không đăng nhập và bị văng, thì có lỗi xảy ra khiến khi truy cập vào trang chủ làm nó tự động chuyển hướng đến trang đăng nhập mà không thể vào trang chủ.
 
 export const runGemini = async (messages, onChunk, userId, systemInstruction) => {
   try {
