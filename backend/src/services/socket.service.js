@@ -2,6 +2,7 @@ import {Server} from 'socket.io';
 import {verifyToken} from '../utils/jwt.js';
 import Conversation from '../models/Conversation.model.js';
 import {sendMessage,handleAIMessage} from './message.service.js';
+import { startInterview, processUserTextTurn, endInterviewAndAnalyze } from './geminiInterview.service.js'; // Import interview services
 
 const onlineUsers=new Map();
 let io;
@@ -80,6 +81,46 @@ export const initSocket=(server)=>{
             }
         })
         
+        socket.on('send_user_text_turn', async (data) => {
+            const { sessionId, text } = data;
+            const userId = socket.user.userId;
+
+            if (!sessionId || !text) {
+                socket.emit('interview_error', 'Session ID and text are required.');
+                return;
+            }
+
+            try {
+                // The onAudioChunk callback will emit audio data directly to the client
+                await processUserTextTurn(sessionId, text, (audioChunk, mimeType) => {
+                    socket.emit('ai_audio_chunk', { sessionId, audioChunk, mimeType });
+                });
+            } catch (error) {
+                console.error(`Error processing user text turn for session ${sessionId}:`, error);
+                socket.emit('interview_error', error.message || 'Failed to process user input.');
+            }
+        });
+
+        socket.on('end_interview', async (data) => {
+            const { sessionId } = data;
+            const userId = socket.user.userId;
+
+            if (!sessionId) {
+                socket.emit('interview_error', 'Session ID is required to end an interview.');
+                return;
+            }
+
+            try {
+                const { finalMessage, analysis } = await endInterviewAndAnalyze(sessionId, (audioChunk, mimeType) => {
+                    socket.emit('ai_audio_chunk', { sessionId, audioChunk, mimeType }); // Stream final message audio
+                });
+                socket.emit('interview_ended', { sessionId, finalMessage, analysis });
+                console.log(`Interview ended for user ${userId} with session ${sessionId}`);
+            } catch (error) {
+                console.error(`Error ending interview for session ${sessionId}:`, error);
+                socket.emit('interview_error', error.message || 'Failed to end interview.');
+            }
+        });
 
         //disconnect
         socket.on('disconnect',()=>{

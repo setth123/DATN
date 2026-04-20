@@ -1,32 +1,40 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const config = {
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Configuration for the interview model (audio response)
+const interviewModelConfig = {
   model: "models/gemini-3.1-flash-live-preview",
   generationConfig: {
-    responseModalities: ["audio"], // Quan trọng: Yêu cầu trả về audio trực tiếp
+    responseMimeType: "audio/mpeg", // Specify desired audio format
+    responseModalities: ["AUDIO"], // Quan trọng: Yêu cầu trả về audio trực tiếp
     speechConfig: {
       voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoide" } } // Chọn giọng nói
     }
   }
 };
 
+// Model cho việc phỏng vấn (dựa trên audio).
+const interviewModel = genAI.getGenerativeModel(interviewModelConfig);
+
 // Model cho việc phân tích sau phỏng vấn (dựa trên văn bản).
 const analysisModel = genAI.getGenerativeModel({
   model: "gemma-4-31b-it", // Theo yêu cầu của người dùng
+  generationConfig: { responseMimeType: "application/json" }
 });
 
 // Lưu trữ các phiên phỏng vấn đang hoạt động trong bộ nhớ. Trong kịch bản thực tế, bạn có thể sử dụng Redis.
 const interviewSessions = new Map();
 
 /**
- * Bắt đầu một phiên phỏng vấn mới.
- * Hàm này được thiết kế cho một thiết lập streaming (ví dụ: WebSockets).
- * @param {string} sessionId - A unique ID for this session.
- * @param {string} cvContext - The extracted text from the user's CV.
- * @param {string} jdContext - The extracted text from the job description.
- * @returns {Promise<object>} - The initial message from the AI.
+ * Starts a new interview session.
+ * @param {string} sessionId - Unique ID for the interview session.
+ * @param {string} cvContext - Context from the candidate's CV.
+ * @param {string} jdContext - Context from the job description.
+ * @param {function(string, string): void} onAudioChunk - Callback to stream audio chunks back to the client.
+ * @returns {Promise<void>}
  */
-export const startInterview = async (sessionId, cvContext, jdContext) => {
+export const startInterview = async (sessionId, cvContext, jdContext, onAudioChunk) => {
   const systemInstruction = `
     Role: Bạn là một nhà tuyển dụng cấp cao, thân thiện và chuyên nghiệp, đang thực hiện một cuộc phỏng vấn bằng âm thanh.
     Context: Bạn đang phỏng vấn một ứng viên dựa trên thông tin sau:
@@ -54,63 +62,51 @@ export const startInterview = async (sessionId, cvContext, jdContext) => {
   // Bắt đầu cuộc trò chuyện với một lời nhắc để gợi ra phản hồi âm thanh.
   const result = await chat.sendMessageStream("Hãy bắt đầu buổi phỏng vấn. Gửi lời chào đầu tiên của bạn đến ứng viên.");
   
-  let initialResponse = "";
+  let accumulatedTextForTranscript = "";
   for await (const chunk of result.stream) {
-    initialResponse += chunk.text();
+    if (chunk.audio) {
+      onAudioChunk(chunk.audio.audioChunk, chunk.audio.mimeType);
+    }
+    if (chunk.text) { // Also capture text for transcript
+      accumulatedTextForTranscript += chunk.text();
+    }
   }
 
   // Ghi lại lượt đi đầu tiên của AI (dưới dạng văn bản) vào bản ghi.
-  session.transcript.push({ role: 'model', parts: [{ text: initialResponse }] });
-
-  // Trả về tin nhắn văn bản đầu tiên để chuyển thành giọng nói.
-  return { initialMessage: initialResponse };
+  session.transcript.push({ role: 'model', parts: [{ text: accumulatedTextForTranscript }] });
 };
 
 /**
- * Chuyển đổi âm thanh của người dùng thành văn bản, nhận phản hồi văn bản từ AI và trả về.
+ * Processes the user's text input, gets an audio response from the AI, and streams it back.
  * @param {string} sessionId - The ID of the active session.
- * @param {string} userAudioBase64 - Phản hồi âm thanh hoàn chỉnh của người dùng cho một lượt, được mã hóa base64.
- * @param {string} mimeType - Mime type của âm thanh (ví dụ: 'audio/webm').
- * @returns {Promise<string>} - Phản hồi văn bản của AI để chuyển thành giọng nói.
+ * @param {string} userText - The transcribed text from the user's speech.
+ * @param {function(string, string): void} onAudioChunk - Callback to stream audio chunks back to the client.
+ * @returns {Promise<void>}
  */
-export const processUserAudioTurn = async (sessionId, userAudioBase64, mimeType) => {
+export const processUserTextTurn = async (sessionId, userText, onAudioChunk) => {
   const session = interviewSessions.get(sessionId);
   if (!session) {
     throw new Error("Interview session not found or has expired.");
   }
 
-  // 1. Chuyển đổi âm thanh của người dùng thành văn bản và thêm vào bản ghi.
-  // Trong một ứng dụng sản xuất, một dịch vụ Speech-to-Text chuyên dụng, nhanh hơn sẽ tốt hơn.
-  // Ở đây chúng ta sử dụng Gemini cho đơn giản.
-  const transcribedUserText = await transcribeAudio(userAudioBase64, mimeType);
-  session.transcript.push({ role: 'user', parts: [{ text: transcribedUserText }] });
+  // 1. Ghi lại lượt đi của người dùng (dưới dạng văn bản) vào bản ghi.
+  session.transcript.push({ role: 'user', parts: [{ text: userText }] });
 
-  // 2. Gửi văn bản đã chuyển đổi đến phiên chat để nhận câu hỏi tiếp theo từ AI.
-  const result = await session.chat.sendMessageStream(transcribedUserText);
+  // 2. Gửi văn bản đến phiên chat để nhận câu hỏi tiếp theo từ AI.
+  const result = await session.chat.sendMessageStream(userText);
 
-  let aiResponseText = "";
+  let accumulatedTextForTranscript = "";
   for await (const chunk of result.stream) {
-    aiResponseText += chunk.text();
+    if (chunk.audio) {
+      onAudioChunk(chunk.audio.audioChunk, chunk.audio.mimeType);
+    }
+    if (chunk.text) { // Also capture text for transcript
+      accumulatedTextForTranscript += chunk.text();
+    }
   }
 
   // 3. Ghi lại phản hồi của AI vào bản ghi.
-  session.transcript.push({ role: 'model', parts: [{ text: aiResponseText }] });
-
-  return aiResponseText;
-};
-
-/**
- * Hàm trợ giúp để chuyển đổi âm thanh thành văn bản bằng Gemini.
- * @param {string} audioBase64
- * @param {string} mimeType
- * @returns {Promise<string>}
- */
-const transcribeAudio = async (audioBase64, mimeType) => {
-    const audioPart = { inlineData: { data: audioBase64, mimeType } };
-    const prompt = "Transcribe the following audio to text in Vietnamese. Only return the transcribed text.";
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const result = await model.generateContent([prompt, audioPart]);
-    return result.response.text();
+  session.transcript.push({ role: 'model', parts: [{ text: accumulatedTextForTranscript }] });
 };
 
 /**
@@ -118,14 +114,23 @@ const transcribeAudio = async (audioBase64, mimeType) => {
  * @param {string} sessionId - The ID of the session to end.
  * @returns {Promise<object>} - The final analysis result.
  */
-export const endInterviewAndAnalyze = async (sessionId) => {
+export const endInterviewAndAnalyze = async (sessionId, onAudioChunk) => {
   const session = interviewSessions.get(sessionId);
   if (!session) throw new Error("Interview session not found.");
 
   // Nhận một tin nhắn kết luận cuối cùng từ AI.
   const finalPrompt = "Buổi phỏng vấn đã kết thúc. Hãy đưa ra một câu kết luận lịch sự và chào tạm biệt ứng viên để kết thúc buổi phỏng vấn này.";
-  const result = await session.chat.sendMessage(finalPrompt);
-  const finalMessage = result.response.text();
+  const result = await session.chat.sendMessageStream(finalPrompt);
+  
+  let finalMessageText = "";
+  for await (const chunk of result.stream) {
+    if (chunk.audio) {
+      onAudioChunk(chunk.audio.audioChunk, chunk.audio.mimeType);
+    }
+    if (chunk.text) {
+      finalMessageText += chunk.text();
+    }
+  }
   
   // Phân tích được thực hiện trên bản ghi văn bản.
   const analysisResult = await analyzeInterviewTranscript(session.transcript);
@@ -133,7 +138,7 @@ export const endInterviewAndAnalyze = async (sessionId) => {
   // Dọn dẹp phiên.
   interviewSessions.delete(sessionId);
 
-  return { finalMessage, analysis: analysisResult };
+  return { finalMessage: finalMessageText, analysis: analysisResult };
 };
 
 const analyzeInterviewTranscript = async (transcript) => {

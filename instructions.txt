@@ -42,6 +42,14 @@ Thiết lập kết nối Live: FE gửi yêu cầu bắt đầu phiên pv, Node
 Gửi setup message chứa systeminstruction. AI chào hỏi và đưa câu hỏi đầu tiên -> FE dùng Web Audio API để stream âm thanh trực tiếp lên Gemini.
 -> Gemini phản hồi bằng luồng audio. Gửi một prompt ẩn gửi một prompt ẩn: "Dựa trên cuộc hội thoại trên, hãy xuất ra file JSON đánh giá các kỹ năng của ứng viên
 -> Hiển thị bảng điểm và nhận xét cho người dùng trên ReactJS.
+Frontend gửi HTTP POST /api/interview/initiate (kèm CV, JD).
+Backend xử lý, khởi tạo phiên, và gửi lời chào AI đầu tiên qua Socket.IO (ai_audio_chunk).
+Frontend lắng nghe ai_audio_chunk để phát âm thanh của AI.
+Frontend gửi send_user_text_turn (văn bản đã chuyển đổi từ giọng nói của người dùng) qua Socket.IO.
+Backend xử lý, gửi phản hồi AI qua Socket.IO (ai_audio_chunk).
+Lặp lại bước 3-5 cho đến khi phỏng vấn kết thúc.
+Frontend gửi end_interview qua Socket.IO.
+Backend xử lý kết thúc, gửi tin nhắn cuối cùng của AI (ai_audio_chunk) và kết quả phân tích (interview_ended).
 Lỗi: Sau một tuần không đăng nhập và bị văng, thì có lỗi xảy ra khiến khi truy cập vào trang chủ làm nó tự động chuyển hướng đến trang đăng nhập mà không thể vào trang chủ.
 
 export const runGemini = async (messages, onChunk, userId, systemInstruction) => {
