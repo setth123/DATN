@@ -34,7 +34,7 @@ const interviewSessions = new Map();
  * @param {function(string, string): void} onAudioChunk - Callback to stream audio chunks back to the client.
  * @returns {Promise<void>}
  */
-export const startInterview = async (sessionId, cvContext, jdContext, onAudioChunk) => {
+export const startInterview = async (sessionId, cvContext, jdContext, onAudioChunk) => {  
   const systemInstruction = `
     Role: Bạn là một nhà tuyển dụng cấp cao, thân thiện và chuyên nghiệp, đang thực hiện một cuộc phỏng vấn bằng âm thanh.
     Context: Bạn đang phỏng vấn một ứng viên dựa trên thông tin sau:
@@ -48,6 +48,7 @@ export const startInterview = async (sessionId, cvContext, jdContext, onAudioChu
     - Nếu ứng viên trả lời lan man, hãy khéo léo ngắt lời và hướng họ trở lại câu hỏi.
     - Buổi phỏng vấn chỉ kéo dài khoảng 15 phút, vì vậy hãy tập trung vào những câu hỏi trọng tâm, tránh lan man.
     - Bắt đầu bằng cách chào hỏi ứng viên một cách thân thiện và hỏi một vài câu hỏi cơ bản để làm quen.
+    - Nếu nhận được lời nhắn từ hệ thống rằng ứng viên đã im lặng quá lâu, hãy chuyển sang câu tiếp theo hoặc gợi ý cho họ.
   `;
 
   const chat = interviewModel.startChat({

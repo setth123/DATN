@@ -16,6 +16,7 @@ import jobRoutes from "./routes/job.route.js";
 import messageRoutes from "./routes/message.route.js";
 import recommendedRoutes from "./routes/recommended.route.js";
 import notificationRoutes from "./routes/notification.route.js";
+import interviewRoutes from "./routes/interview.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,7 +70,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/recommended", recommendedRoutes);
 app.use("/api/notifications", notificationRoutes);
-
+app.use("/api/interview", interviewRoutes);
 
 // --- 6. START SERVER ---
 server.listen(PORT, () => {

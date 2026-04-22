@@ -25,8 +25,8 @@ export const initiateInterview = async (req, res, next) => {
       throw new Error("Định dạng file CV không được hỗ trợ. Vui lòng sử dụng PDF hoặc DOCX.");
     }
 
-    // 2. Sử dụng userId làm sessionId cho đơn giản
-    const sessionId = userId;
+    // 2. Sử dụng interview_<userId> làm sessionId cho đơn giản
+    const sessionId = "interview_" + userId;
 
     // 3. Lấy instance của Socket.IO
     const io = getIo();
