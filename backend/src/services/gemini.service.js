@@ -1,18 +1,11 @@
-
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { tools } from "../ai/tools.schema.js";
 import { executeTool } from "./toolExecutor.service.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const runGemini = async (messages, onChunk, userId, systemInstruction) => {
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemma-4-31b-it",
-      systemInstruction: systemInstruction,
-      tools: tools
-    });
-
     // CHỈNH SỬA 1: Lọc sạch lịch sử chat, loại bỏ các tin nhắn rỗng hoàn toàn
     const chatHistory = messages
       .filter(msg => msg.content && msg.content.trim() !== "")
@@ -21,10 +14,21 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
         parts: [{ text: msg.content }]
       }));
 
-    const chat = model.startChat({ history: chatHistory });
+    // Lấy tin nhắn cuối cùng làm userPrompt và xóa nó khỏi history
+    const userPrompt = chatHistory.pop()?.parts[0].text || "";
 
-    const latestMessage = messages[messages.length - 1].content;
-    const result = await chat.sendMessageStream(latestMessage);
+    // KHỞI TẠO CHAT SESSION: Truyền history, tools và systemInstruction vào config
+    const chat = genAI.chats.create({
+      model: "gemma-4-31b-it", // Thay đổi model nếu cần
+      config: {
+        systemInstruction: systemInstruction,
+        tools: tools
+      },
+      history: chatHistory
+    });
+
+    // Gửi tin nhắn và nhận stream về
+    const result = await chat.sendMessageStream(userPrompt);
 
     // CHỈNH SỬA 2: handleStream bây giờ sẽ TRẢ VỀ văn bản cuối cùng thu thập được
     const finalAiResponse = await handleStream(result, chat, onChunk, userId);
@@ -43,15 +47,18 @@ async function handleStream(result, chat, onChunk, userId) {
   let functionCalls = null;
   let isAnswerStarted = false;
 
-  for await (const chunk of result.stream) {
-    const calls = chunk.functionCalls();
+  // result có thể được duyệt trực tiếp trong @google/genai
+  for await (const chunk of result) {
+    // LƯU Ý: Trong SDK mới, functionCalls là property, không phải function
+    const calls = chunk.functionCalls; 
     if (calls && calls.length > 0) {
       functionCalls = calls;
       continue; 
     }
 
     try {
-      let text = chunk.text();
+      // LƯU Ý: Trong SDK mới, text là property, không phải function
+      let text = chunk.text; 
       if (text) {
         if (!isAnswerStarted) {
           const index = text.indexOf("[ANSWER]");
@@ -75,24 +82,33 @@ async function handleStream(result, chat, onChunk, userId) {
     }
   }
 
+  // Xử lý Tool Calls nếu model yêu cầu
   if (functionCalls) {
     const toolResponses = [];
     for (const fnCall of functionCalls) {
+      // Lưu ý kiểm tra logic phân quyền (role_id) trong executeTool qua Database như rule bảo mật của hệ thống
       const output = await executeTool(fnCall.name, fnCall.args, userId);
+      
+      // Chuẩn bị payload trả về cho model
       toolResponses.push({
-        functionResponse: { name: fnCall.name, response: output }
+        functionResponse: { 
+          name: fnCall.name, 
+          response: output 
+        }
       });
     }
 
+    // Gửi kết quả chạy tool lại vào stream của phiên chat
     const nextResult = await chat.sendMessageStream(toolResponses);
     
-    // Lưu ý: Với đệ quy, ta cần truyền trạng thái hoặc để lượt gọi mới tự xác định lại
+    // Đệ quy để lấy câu trả lời cuối cùng sau khi model nhận được data từ tool
     const nextText = await handleStream(nextResult, chat, onChunk, userId);
     accumulatedText += nextText;
   }
 
   return accumulatedText;
 }
+
 /**
  * Hàm xử lý lỗi tập trung
  */

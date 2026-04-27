@@ -1,4 +1,4 @@
-import { getIo } from '../services/socket.service.js';
+import { getIo, getSocketIdForUser } from '../services/socket.service.js';
 import { startInterview } from '../services/geminiInterview.service.js';
 import { getPDFContext, getDOCXContext } from '../utils/buildPrompt.js';
 import { deleteFile } from '../services/file.service.js';
@@ -28,8 +28,19 @@ export const initiateInterview = async (req, res, next) => {
     // 2. Sử dụng interview_<userId> làm sessionId cho đơn giản
     const sessionId = "interview_" + userId;
 
-    // 3. Lấy instance của Socket.IO
+    // 3. Lấy instance của Socket.IO và chủ động cho user vào phòng để tránh race condition
     const io = getIo();
+    const userSocketId = getSocketIdForUser(userId);
+
+    if (!userSocketId) {
+        throw new Error("Không tìm thấy kết nối socket đang hoạt động cho người dùng. Vui lòng tải lại trang và thử lại.");
+    }
+    const socket = io.sockets.sockets.get(userSocketId);
+    if (socket) {
+        socket.join(sessionId);
+    } else {
+        throw new Error("Không thể tìm thấy instance socket. Vui lòng thử lại.");
+    }
 
     // 4. Định nghĩa callback để stream audio
     const onAudioChunk = (audioChunk, mimeType) => {

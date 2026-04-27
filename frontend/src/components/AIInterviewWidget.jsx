@@ -7,7 +7,7 @@ import { getSocket } from '../services/socket';
 
 const AIInterviewWidget = () => {
     const { isInterviewWidgetOpen, closeInterviewWidget } = useInterview();
-    const [interviewState, setInterviewState] = useState('setup'); // 'setup', 'interviewing', 'finished'
+    const [interviewState, setInterviewState] = useState('setup'); 
     const [cvFile, setCvFile] = useState(null);
     const [jobDescription, setJobDescription] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -16,15 +16,29 @@ const AIInterviewWidget = () => {
     const [analysisResult, setAnalysisResult] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(900); // 15 phút = 900 giây
+    const [isMicMuted, setIsMicMuted] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(900); 
 
-    const recognition = useRef(null);
+    const isAiSpeakingRef = useRef(false);
+    const isMicMutedRef = useRef(false);
     const audioContext = useRef(null);
+    const recognitionRef = useRef(null);
     const socket = getSocket();
-    const timerIdRef = useRef(null); // Ref để lưu ID của interval
-    const silenceTimeRef=useRef(null);
+    const timerIdRef = useRef(null); 
+    const silenceTimeRef = useRef(null);
 
-    // Reset state when widget is closed
+    const toggleMic = () => {
+        setIsMicMuted(!isMicMuted);
+        isMicMutedRef.current = !isMicMutedRef.current;
+        if (isMicMutedRef.current && recognitionRef.current) {
+            recognitionRef.current.stop();
+        } else if (!isMicMutedRef.current && recognitionRef.current) {
+            try {
+                recognitionRef.current.start();
+            } catch (e) {}
+        }
+    };
+
     useEffect(() => {
         if (!isInterviewWidgetOpen) {
             setInterviewState('setup');
@@ -34,25 +48,34 @@ const AIInterviewWidget = () => {
             setError('');
             setSessionId(null);
             setAnalysisResult(null);
+            setIsMicMuted(false);
+            isMicMutedRef.current = false;
             setTimeLeft(900);
             if (timerIdRef.current) clearInterval(timerIdRef.current);
+
+            if (audioContext.current && audioContext.current.state !== 'closed') {
+                audioContext.current.close();
+                audioContext.current = null;
+            }
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+                recognitionRef.current = null;
+            }
         }
     }, [isInterviewWidgetOpen]);
 
-    //hanle no response from candidate
-    const handleNoResponse=useCallback(() => {
+    const handleNoResponse = useCallback(() => {
         if (socket && sessionId && interviewState === 'interviewing') {
             console.log("Ứng viên im lặng quá lâu, chuyển câu hỏi...");
-            // Gửi một tin nhắn đặc biệt cho AI
             socket.emit('user_text_turn', { 
                 sessionId, 
                 text: "[Hệ thống: Ứng viên không trả lời được câu hỏi này, vui lòng bỏ qua và chuyển sang câu tiếp theo hoặc gợi ý cho họ]" 
             });
-            setIsAiSpeaking(true); // Đợi AI phản hồi
-            if (recognition.current) recognition.current.stop(); // Dừng mic tạm thời
+            setIsAiSpeaking(true); 
+            isAiSpeakingRef.current = true;
         }
     }, [socket, sessionId, interviewState]);
-    //send end_interview->receive last gooobye->receive interview_ended (call handleInterviewEnded) to get analysis result and final message->set state to finished to show result screen
+
     const handleHangUp = useCallback(() => {
         if (socket && sessionId) {
             if (timerIdRef.current) {
@@ -60,136 +83,201 @@ const AIInterviewWidget = () => {
             }
             setIsLoading(true);
             socket.emit('end_interview', { sessionId });
-            if (recognition.current) {
-                recognition.current.stop();
+            
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
             }
         }
     }, [socket, sessionId]);
 
-    // Effect để quản lý bộ đếm thời gian
     useEffect(() => {
         if (interviewState === 'interviewing') {
-            setTimeLeft(900); // Reset bộ đếm
+            setTimeLeft(900); 
             timerIdRef.current = setInterval(() => {
                 setTimeLeft(prevTime => prevTime - 1);
             }, 1000);
         }
-        return () => clearInterval(timerIdRef.current); // Dọn dẹp khi unmount
+        return () => clearInterval(timerIdRef.current); 
     }, [interviewState]);
 
-    // Effect để kết thúc phỏng vấn khi hết giờ
     useEffect(() => {
         if (timeLeft <= 0 && interviewState === 'interviewing') {
             handleHangUp();
         }
     }, [timeLeft, interviewState, handleHangUp]);
 
-    // Main effect for handling the interview lifecycle
     useEffect(() => {
         if (interviewState !== 'interviewing' || !sessionId || !socket) return;
 
-        // 1. Setup AudioContext (TTS)
         if (!audioContext.current) {
-            audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        // 2. Setup SpeechRecognition
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            setError("Trình duyệt của bạn không hỗ trợ nhận dạng giọng nói. Vui lòng dùng Chrome.");
+            console.error("AudioContext chưa được khởi tạo. Âm thanh sẽ không hoạt động.");
             return;
         }
-        recognition.current = new SpeechRecognition();
-        recognition.current.continuous = false;
-        recognition.current.interimResults = false;
-        //có thể cần xử lý nói ngắt quãng
-        recognition.current.lang = 'vi-VN';
 
-        recognition.current.onstart = () => setIsListening(true);
-        recognition.current.onend = () => setIsListening(false);
-        recognition.current.onerror = (event) => console.error("Speech recognition error", event.error);
-        recognition.current.onresult = (event) => {
-            //reset silence timer
-            if(silenceTimeRef.current)clearTimeout(silenceTimerRef.current);
+        socket.on('ai_audio_chunk', handleAudioChunk);
+        socket.on('interview_ended', handleInterviewEnded);
 
-            const userText = event.results[event.results.length - 1][0].transcript.trim();
-            if (userText) {
-                socket.emit('user_text_turn', { sessionId, text: userText });
-                setIsAiSpeaking(true);
-            }
-        };
-
-        // 3. Setup Socket Listeners
         socket.emit('join_interview_session', sessionId);
+        
+        socket.emit('trigger_greeting', { sessionId });
+        isAiSpeakingRef.current = true;
+        setIsAiSpeaking(true);
 
         const audioQueue = [];
-        let isPlaying = false;
+        let nextPlayTime = 0;
 
         const playNextAudio = async () => {
-            if (isPlaying || audioQueue.length === 0) {
-                if (!isPlaying) {
-                    setIsAiSpeaking(false);
-                    if (interviewState === 'interviewing' && recognition.current) {
-                        try { recognition.current.start(); } catch (e) { console.warn("Recognition start failed:", e.message); }
-                    }
-                }
-                return;
-            }
-            isPlaying = true;
-            setIsAiSpeaking(true);
+            if (audioQueue.length === 0) return;
 
-            const audioData = audioQueue.shift();
+            setIsAiSpeaking(true);
+            isAiSpeakingRef.current = true;
+
+            const item = audioQueue.shift();
+            const { audioData } = item;
+
             try {
-                const audioBuffer = await audioContext.current.decodeAudioData(audioData);
+                const bufferData = audioData instanceof ArrayBuffer ? audioData : new Uint8Array(audioData).buffer;
+                const audioBuffer = await audioContext.current.decodeAudioData(bufferData);
+
                 const source = audioContext.current.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(audioContext.current.destination);
-                source.start();
-                source.onended = () => { 
-                    isPlaying = false; playNextAudio(); 
+
+                const currentTime = audioContext.current.currentTime;
+                if (nextPlayTime < currentTime) {
+                    nextPlayTime = currentTime; 
+                }
                 
-                    //start count silence time
-                    if(audioQueue.length === 0){
-                        if(silenceTimeRef.current)clearTimeout(silenceTimeRef.current);
-                        silenceTimeRef.current = setTimeout(handleNoResponse, 30000); // 30 giây im lặng sẽ kích hoạt handleNoResponse
+                source.start(nextPlayTime);
+                nextPlayTime += audioBuffer.duration; 
+
+                source.onended = () => { 
+                    if (audioQueue.length === 0 && audioContext.current.currentTime >= nextPlayTime - 0.1) {
+                        setIsAiSpeaking(false);
+                        isAiSpeakingRef.current = false;
+                        if(silenceTimeRef.current) clearTimeout(silenceTimeRef.current);
+                        silenceTimeRef.current = setTimeout(handleNoResponse, 30000);
                     }
                 };
+
+                if (audioQueue.length > 0) {
+                     playNextAudio();
+                }
+
             } catch (e) {
-                console.error("Error decoding audio data", e);
-                isPlaying = false;
-                playNextAudio();
+                console.error("Lỗi giải mã audio:", e);
+                if (audioQueue.length > 0) playNextAudio();
             }
         };
 
-        const handleAudioChunk = (data) => {
+        function handleAudioChunk(data) {
             if (data.sessionId === sessionId) {
-                audioQueue.push(data.audioChunk.buffer);
-                playNextAudio();
+                audioQueue.push({ audioData: data.audioChunk, mimeType: data.mimeType });
+                
+                if (audioQueue.length === 1) {
+                    playNextAudio();
+                }
             }
-        };
+        }
 
-        const handleInterviewEnded = (data) => {
+        function handleInterviewEnded(data) {
             if (data.sessionId === sessionId) {
                 setAnalysisResult(data.analysis);
                 setInterviewState('finished');
                 setIsLoading(false);
-                if (timerIdRef.current) clearInterval(timerIdRef.current); // Dừng timer khi có kết quả
+                if (timerIdRef.current) clearInterval(timerIdRef.current);
+            }
+        }
+
+        let silenceListeningTimer = null;
+        let finalTranscript = '';
+
+        const startSpeechRecognition = () => {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.error("Trình duyệt không hỗ trợ Web Speech API.");
+                setError("Trình duyệt không hỗ trợ nhận dạng giọng nói.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognitionRef.current = recognition;
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'vi-VN'; 
+
+            recognition.onstart = () => {
+                console.log("Bắt đầu nhận dạng giọng nói");
+            };
+
+            recognition.onresult = (event) => {
+                if (isAiSpeakingRef.current || isMicMutedRef.current) return;
+                
+                setIsListening(true);
+                
+                if (silenceTimeRef.current) clearTimeout(silenceTimeRef.current);
+                silenceTimeRef.current = setTimeout(handleNoResponse, 30000);
+
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                if (silenceListeningTimer) clearTimeout(silenceListeningTimer);
+                
+                silenceListeningTimer = setTimeout(() => {
+                    setIsListening(false);
+                    const textToSend = finalTranscript.trim();
+                    if (textToSend) {
+                        console.log("Gửi text từ giọng nói:", textToSend);
+                        socket.emit('user_text_turn', { sessionId, text: textToSend });
+                        finalTranscript = ''; 
+                    }
+                }, 1500); 
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Lỗi nhận dạng giọng nói:", event.error);
+                if (event.error === 'not-allowed') {
+                    setError("Không thể truy cập microphone. Vui lòng kiểm tra quyền.");
+                }
+            };
+
+            recognition.onend = () => {
+                if (interviewState === 'interviewing' && !isMicMutedRef.current && recognitionRef.current) {
+                    try {
+                        recognition.start();
+                    } catch (e) {}
+                }
+            };
+
+            if (!isMicMutedRef.current) {
+                try {
+                    recognition.start();
+                } catch (e) {}
             }
         };
 
-        socket.on('ai_audio_chunk', handleAudioChunk);
-        socket.on('interview_ended', handleInterviewEnded);
+        startSpeechRecognition();
 
         return () => {
             socket.emit('leave_interview_session', sessionId);
             socket.off('ai_audio_chunk', handleAudioChunk);
             socket.off('interview_ended', handleInterviewEnded);
-            if (recognition.current) recognition.current.abort();
+
             if (timerIdRef.current) clearInterval(timerIdRef.current);
-            if (audioContext.current && audioContext.current.state !== 'closed') audioContext.current.close();
-            if(silenceTimeRef.current)clearTimeout(silenceTimeRef.current);
+            if (silenceTimeRef.current) clearTimeout(silenceTimeRef.current);
+            if (silenceListeningTimer) clearTimeout(silenceListeningTimer);
+            if (recognitionRef.current) {
+                recognitionRef.current.onend = null; 
+                recognitionRef.current.stop();
+            }
         };
-    }, [interviewState, sessionId, socket]);
+    }, [interviewState, sessionId, socket, handleNoResponse]);
 
     const handleFileChange = (e) => {
         if (e.target.files[0]) {
@@ -204,7 +292,14 @@ const AIInterviewWidget = () => {
             return;
         }
         setIsLoading(true);
-        setError('');
+        setError('');   
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!audioContext.current) {
+            audioContext.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.current.state === 'suspended') {
+            await audioContext.current.resume();
+        }
 
         const formData = new FormData();
         formData.append('cv', cvFile);
@@ -215,7 +310,6 @@ const AIInterviewWidget = () => {
             const { sessionId: newSessionId } = response.data;
             setSessionId(newSessionId);
             setInterviewState('interviewing');
-            setIsAiSpeaking(true); // AI will greet first
         } catch (err) {
             setError(err.response?.data?.message || 'Lỗi khi bắt đầu phỏng vấn.');
             console.error(err);
@@ -276,12 +370,30 @@ const AIInterviewWidget = () => {
             <div className="flex-shrink-0 flex flex-col items-center mt-8">
                 <img src={interviewerAvatar} alt="AI Interviewer" className="w-32 h-32 rounded-full border-4 border-green-500 shadow-lg mb-4" />
                 <div className="h-8">
-                    {isAiSpeaking && <p className="text-lg text-green-400 animate-pulse">AI đang nói...</p>}
-                    {isListening && <p className="text-lg text-blue-400 animate-pulse">Đang lắng nghe bạn...</p>}
+                    {isAiSpeaking ? (
+                        <p className="text-lg text-green-400 animate-pulse">AI đang nói...</p>
+                    ) : isListening ? (
+                        <p className="text-lg text-blue-400 animate-pulse">Đang lắng nghe bạn...</p>
+                    ) : (
+                        <p className="text-lg text-blue-400">Đang chờ bạn trả lời...</p>
+                    )}
                 </div>
             </div>
 
-            <div className="flex-shrink-0 flex items-center justify-center mb-8">
+            <div className="flex-shrink-0 flex items-center justify-center mb-8 space-x-4">
+                <button
+                    onClick={toggleMic}
+                    className={`flex items-center justify-center py-3 px-8 rounded-full text-white font-bold transition-colors shadow-lg ${isMicMuted ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                    <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        {isMicMuted ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                        ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        )}
+                    </svg>
+                    {isMicMuted ? 'Mic Tắt' : 'Mic Bật'}
+                </button>
                 <button
                     onClick={handleHangUp}
                     disabled={isLoading}

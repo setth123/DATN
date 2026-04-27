@@ -129,3 +129,30 @@ async function handleStream(result, chat, onChunk, userId) {
     await handleStream(secondResult, chat, onChunk, userId);
   }
 }
+
+
+  1. Giới thiệu chung
+  Chúng tôi đang tìm kiếm những tài năng trẻ, đam mê công nghệ và có tư duy logic tốt để gia nhập đội ngũ phát triển sản phẩm. Tại đây, bạn không chỉ "copy-paste" code, mà sẽ tham gia trực tiếp vào vòng đời phát triển phần mềm (SDLC), từ khâu ý tưởng đến khi triển khai sản phẩm thực tế.
+  2. Trách nhiệm công việc (Responsibilities)
+      Phát triển tính năng: Hỗ trợ thiết kế, lập trình và duy trì các module tính năng cho ứng dụng web (Frontend & Backend).
+      Fix bug & Tối ưu: Tìm kiếm nguyên nhân và xử lý các lỗi kỹ thuật trong quá trình phát triển; tối ưu hóa hiệu suất mã nguồn.
+      Nghiên cứu công nghệ: Tìm hiểu và ứng dụng các công nghệ mới để giải quyết các bài toán cụ thể của dự án.
+      Làm việc nhóm: Phối hợp chặt chẽ với các Senior Engineer và Designer thông qua quy trình Agile/Scrum.
+      Viết tài liệu: Thực hiện viết Unit Test và tài liệu kỹ thuật (Technical Documentation) cho các tính năng mình đảm nhận.
+  3. Yêu cầu chuyên môn (Requirements)
+      Nền tảng vững chắc: Đang theo học hoặc vừa tốt nghiệp chuyên ngành CNTT, Khoa học máy tính hoặc các ngành tương đương.
+      Tư duy lập trình: Hiểu rõ về cấu trúc dữ liệu và giải thuật (Data Structures & Algorithms).
+      Ngôn ngữ lập trình: Có kiến thức cơ bản về ít nhất một ngôn ngữ (Javascript, Python, Java hoặc C#).
+      Web Cơ bản: Nắm vững HTML5, CSS3 và Javascript (ES6+). Ưu tiên ứng viên biết sử dụng các framework như React, Vue hoặc Node.js.
+      Cơ sở dữ liệu: Hiểu về SQL (MySQL, PostgreSQL) hoặc NoSQL (MongoDB).
+      Công cụ quản lý: Biết sử dụng Git để quản lý phiên bản mã nguồn.
+  4. Kỹ năng mềm & Điểm cộng (Nice to have)
+      Có khả năng đọc hiểu tài liệu tiếng Anh chuyên ngành tốt.
+      Tư duy giải quyết vấn đề (Problem-solving) chủ động.
+      Đã từng có sản phẩm cá nhân hoặc dự án đồ án thực tế trên GitHub.
+  5. Quyền lợi
+      Môi trường làm việc trẻ trung, sáng tạo, không ngại sai lầm.
+      Được dẫn dắt trực tiếp bởi các Mentor giàu kinh nghiệm.
+      Hỗ trợ chi phí thực tập và cơ hội trở thành nhân viên chính thức sau kỳ thực tập.
+
+

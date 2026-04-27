@@ -12,6 +12,10 @@ export const getIo = () => {
     }
     return io;
 };
+export const getSocketIdForUser = (userId) => {
+    return onlineUsers.get(userId);
+};
+
 export const initSocket=(server)=>{
     io=new Server(server,{
         cors:{
@@ -81,7 +85,7 @@ export const initSocket=(server)=>{
             }
         })
         
-        socket.on('send_user_text_turn', async (data) => {
+        socket.on('user_text_turn', async (data) => {
             const { sessionId, text } = data;
             const userId = socket.user.userId;
 
@@ -98,6 +102,39 @@ export const initSocket=(server)=>{
             } catch (error) {
                 console.error(`Error processing user text turn for session ${sessionId}:`, error);
                 socket.emit('interview_error', error.message || 'Failed to process user input.');
+            }
+        });
+
+        socket.on('user_audio_turn', async (data) => {
+            const { sessionId, audioChunk } = data;
+            //console.log("Received user audio turn data:", data);
+            if (!sessionId || !audioChunk) return;
+            
+            try {
+                // const { processUserAudioTurn } = await import('./geminiInterview.service.js');
+                // await processUserAudioTurn(sessionId, audioChunk, (audio, mimeType) => {
+                //     socket.emit('ai_audio_chunk', { sessionId, audioChunk: audio, mimeType });
+                // });
+                const {processUserTextTurn} = await import('./geminiInterview.service.js');
+                // Convert audioChunk (base64 string) back to Buffer
+                const audioBuffer = Buffer.from(audioChunk, 'base64');
+                // Process the audio turn as if it were text input, since Gemini may not support raw audio input directly
+                await processUserTextTurn(sessionId, 'Đây là tin nhắn kiểm tra tín hiệu, hãy phản hồi nếu nó hoạt động', (audio, mimeType) => {
+                    socket.emit('ai_audio_chunk', { sessionId, audioChunk: audio, mimeType });
+                });
+            } catch (error) {
+                console.error(`Error processing user audio turn:`, error);
+            }
+        });
+
+        socket.on('trigger_greeting', async (data) => {
+            const { sessionId } = data;
+            if (!sessionId) return;
+            try {
+                const { triggerInitialGreeting } = await import('./geminiInterview.service.js');
+                triggerInitialGreeting(sessionId);
+            } catch (error) {
+                console.error(`Error triggering greeting:`, error);
             }
         });
 
