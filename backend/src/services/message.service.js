@@ -20,11 +20,27 @@ export const getMessages=async(conversationId,limit,before,isAI)=>{
     let messages;
     if(isAI){
         messages=await getConversation(conversationId);
-        if(!messages)throw new Error("Conversation not found or expired");
-        messages=messages.messages.map(m=>({
-            ...m,
-            sender:{name: m.role === "user" ? "You" : "AI Assistant"}
-        }));
+        if(!messages || !messages.messages)throw new Error("Conversation not found or expired");
+        // Chuyển đổi từ { role, parts } sang định dạng mà frontend mong đợi
+        messages = messages.messages.map(m => {
+            if (m.role === 'user' && m.isFile && m.fileName) {
+                return {
+                    _id: `ai-msg-${Math.random()}`,
+                    role: m.role,
+                    content: `Đã gửi tệp: ${m.fileName}`,
+                    sender: { name: "You" },
+                    createdAt: new Date().toISOString(),
+                };
+            }
+            // Tin nhắn bình thường
+            return {
+                _id: `ai-msg-${Math.random()}`,
+                role: m.role,
+                content: m.parts.map(p => p.text).join(''),
+                sender: { name: m.role === "user" ? "You" : "AI Assistant" },
+                createdAt: new Date().toISOString(),
+            };
+        });
     }
     else{
     messages=await Message.find(query)
@@ -144,7 +160,7 @@ export const sendFile=async(userId, conversationId, file, isAI)=>{
 
 const MAX_MESSAGES_IN_MEMORY = 50;
 
-export const handleAIMessage=async({ userId, conversationId, text, systemInstruction, onChunk })=>{
+export const handleAIMessage=async({ userId, conversationId, text, systemInstruction, onChunk, fileInfo = null })=>{
     // 1. Lấy hoặc tạo cuộc trò chuyện và ID của nó. ID cuộc trò chuyện AI chính là userId.
     const { convoId } = await getOrCreatAIConversation(userId, systemInstruction);
     const conversation = await getConversation(convoId);
@@ -156,18 +172,23 @@ export const handleAIMessage=async({ userId, conversationId, text, systemInstruc
     }
     
     // 2. Thêm tin nhắn hiện tại của người dùng vào lịch sử
-    conversation.messages.push({
+    const userMessage = {
         role: "user",
-        content: text,
-    });
+        parts: [{ text }],
+    };
+    if (fileInfo) {
+        userMessage.isFile = fileInfo.isFile;
+        userMessage.fileName = fileInfo.fileName;
+    }
+    conversation.messages.push(userMessage);
 
     // 3. Tóm tắt cuộc trò chuyện nếu nó quá dài
     await maybeSummarize(conversation);
 
-    // 4. Giới hạn ngữ cảnh trong 20 tin nhắn cuối để quản lý token
+    // 4. Giới hạn ngữ cảnh trong MAX_MESSAGES_IN_MEMORY tin nhắn cuối để quản lý token
     let conversation_context;
-    if (conversation.messages.length > 20) {
-        conversation_context = conversation.messages.slice(-20);
+    if (conversation.messages.length > MAX_MESSAGES_IN_MEMORY) {
+        conversation_context = conversation.messages.slice(-MAX_MESSAGES_IN_MEMORY);
     } else {
         conversation_context = conversation.messages;
     }
@@ -183,7 +204,7 @@ export const handleAIMessage=async({ userId, conversationId, text, systemInstruc
     // 6. Thêm phản hồi đầy đủ của AI vào lịch sử
     conversation.messages.push({
         role: "model", // Sử dụng role 'model' cho trợ lý AI
-        content: assistantReply,
+        parts: [{ text: assistantReply || "" }],
     });
 
     // 7. Giữ cho lịch sử trò chuyện trong Redis không tăng vô hạn
@@ -221,6 +242,7 @@ export const handleAIFileMessage=async({userId, conversationId, file, onChunk})=
         text: fileContextText,
         systemInstruction: null, // System instruction đã có trong cuộc trò chuyện
         onChunk, // Chuyển tiếp callback onChunk để stream phản hồi
+        fileInfo: { isFile: true, fileName: file.originalname }
     });
     } finally {
         // Ensure the temporary file is deleted after processing

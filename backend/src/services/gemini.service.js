@@ -6,16 +6,18 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const runGemini = async (messages, onChunk, userId, systemInstruction) => {
   try {
-    // CHỈNH SỬA 1: Lọc sạch lịch sử chat, loại bỏ các tin nhắn rỗng hoàn toàn
-    const chatHistory = messages
-      .filter(msg => msg.content && msg.content.trim() !== "")
-      .map(msg => ({
-        role: msg.role === "user" ? "user" : "model",
-        parts: [{ text: msg.content }]
-      }));
+    // Tạo một bản sao "sạch" của lịch sử, chỉ chứa các trường mà API của Gemini chấp nhận.
+    // Điều này loại bỏ các trường tùy chỉnh như 'isFile' và 'fileName'.
+    const cleanMessages = messages.map(msg => ({
+      role: msg.role,
+      parts: msg.parts
+    })).filter(msg => 
+        msg.parts && msg.parts.some(p => p.text && p.text.trim() !== '')
+    );
 
     // Lấy tin nhắn cuối cùng làm userPrompt và xóa nó khỏi history
-    const userPrompt = chatHistory.pop()?.parts[0].text || "";
+    
+    const userPrompt = cleanMessages.pop()?.parts.map(p => p.text).join('\n') || "";
 
     // KHỞI TẠO CHAT SESSION: Truyền history, tools và systemInstruction vào config
     const chat = genAI.chats.create({
@@ -24,11 +26,13 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
         systemInstruction: systemInstruction,
         tools: tools
       },
-      history: chatHistory
+      history: cleanMessages
     });
-
     // Gửi tin nhắn và nhận stream về
-    const result = await chat.sendMessageStream(userPrompt);
+    //console.log("Sending user prompt to Gemini:", userPrompt);
+    const result = await chat.sendMessageStream({
+      message:userPrompt
+    });
 
     // CHỈNH SỬA 2: handleStream bây giờ sẽ TRẢ VỀ văn bản cuối cùng thu thập được
     const finalAiResponse = await handleStream(result, chat, onChunk, userId);
@@ -99,7 +103,7 @@ async function handleStream(result, chat, onChunk, userId) {
     }
 
     // Gửi kết quả chạy tool lại vào stream của phiên chat
-    const nextResult = await chat.sendMessageStream(toolResponses);
+    const nextResult = await chat.sendMessageStream({ message: toolResponses });
     
     // Đệ quy để lấy câu trả lời cuối cùng sau khi model nhận được data từ tool
     const nextText = await handleStream(nextResult, chat, onChunk, userId);
