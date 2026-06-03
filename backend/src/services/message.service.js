@@ -18,7 +18,8 @@ export const getMessages=async(conversationId,limit,before,isAI)=>{
     const query={conversationId};
     if(before)query.createAt={$lt:new Date(before)};
     let messages;
-    if(isAI){
+    var flag = isAI==="true" ? true :false;
+    if(flag){
         messages=await getConversation(conversationId);
         if(!messages || !messages.messages)throw new Error("Conversation not found or expired");
         // Chuyển đổi từ { role, parts } sang định dạng mà frontend mong đợi
@@ -43,10 +44,10 @@ export const getMessages=async(conversationId,limit,before,isAI)=>{
         });
     }
     else{
-    messages=await Message.find(query)
-        .populate('sender', 'name')
-        .sort({createdAt:-1})
-        .limit(limit||50);
+        messages=await Message.find(query)
+            .populate('sender', 'name')
+            .sort({createdAt:-1})
+            .limit(limit||50);
     }
 
     return messages;
@@ -61,6 +62,7 @@ export const sendMessage=async(userId,conversationId,text)=>{
         sender:userId,
         text
     });
+    console.log("New message created:", newMessage);
     const conversation = await Conversation.findByIdAndUpdate(conversationId,{
         lastMessage:{
             text,

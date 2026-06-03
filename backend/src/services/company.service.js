@@ -51,7 +51,6 @@ export const getMostJobCompany=async()=>{
       $limit: 6
     }
   ]);
-
   return companies;
   
 }

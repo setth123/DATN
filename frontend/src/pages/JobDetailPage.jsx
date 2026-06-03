@@ -59,6 +59,7 @@ const JobDetailPage = () => {
           // Fetch recommended candidates for the job if the current user is the owner
           recommendedService.recommendCandidateForJob(id).then(
             (recResponse) => {
+              console.log(recResponse.data.candidates);
               setRecommendedCandidates(recResponse.data.candidates);
             },
             (error) => console.log("Error fetching recommended candidates:", error)
@@ -198,37 +199,46 @@ const JobDetailPage = () => {
             <h3 className="text-xl font-bold mb-4 text-green-400">
               Ứng viên đã ứng tuyển
             </h3>
-            <div className="space-y-4 max-h-96 overflow-y-auto pr-2"> {/* Added max-h and overflow for scrollability */}
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
               {applications.map((app) => (
                 <div
                   key={app._id}
-                  className="bg-gray-700 p-4 rounded-lg flex items-center justify-between"
+                  className="bg-gray-700 p-4 rounded-lg flex items-center justify-between gap-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <Link to={`/candidate/${app.candidateId._id}`} className="flex items-center gap-3 group">
+                  {/* Khối bên trái: Avatar và Tên (Cố định chiều rộng hoặc để flex-1) */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Link to={`/candidate/${app.candidateId._id}`} className="flex items-center gap-3 group min-w-0">
                       <img
                         src={app.candidateId.isOpenToWork ? openToWorkAvatar : userAvatar}
-                        className="h-10 w-10 rounded-full object-cover border-2 border-gray-600 group-hover:border-green-500 transition-colors"
-                        />
-                      <p className="font-semibold text-lg group-hover:text-green-400 transition-colors">
+                        className="h-10 w-10 rounded-full flex-shrink-0 object-cover border-2 border-gray-600 group-hover:border-green-500 transition-colors"
+                      />
+                      <p className="font-semibold text-lg group-hover:text-green-400 transition-colors truncate">
                         {app.candidateId.fullName}
                       </p>
                     </Link>
                   </div>
-                        {app.cvSnapshotUrl && (
-                          <a
-                            href={`http://localhost:4000/${app.cvSnapshotUrl}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:underline text-sm mr-2"
-                          >
-                            Tải CV
-                          </a>
-                        )}
-                  <button onClick={() => openChat({ id: app.candidateId.userId, name: app.candidateId.fullName }, 'candidate')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors flex items-center gap-2">
-                    <img src={chatIcon} alt="Chat" className="h-5 w-5" />
-                    Nhắn tin
-                  </button>
+
+                  {/* Khối bên phải: Bao gồm Tải CV và nút Nhắn tin để chúng luôn đi cùng nhau */}
+                  <div className="flex items-center gap-6 flex-shrink-0">
+                    {app.cvSnapshotUrl && (
+                      <a
+                        href={`http://localhost:4000/${app.cvSnapshotUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:underline text-sm whitespace-nowrap"
+                      >
+                        Tải CV
+                      </a>
+                    )}
+                    
+                    <button 
+                      onClick={() => openChat({ id: app.candidateId.userId, name: app.candidateId.fullName }, app.candidateId.fullName)} 
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors flex items-center gap-2 whitespace-nowrap"
+                    >
+                      <img src={chatIcon} alt="Chat" className="h-5 w-5" />
+                      Nhắn tin
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

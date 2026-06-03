@@ -32,7 +32,7 @@ export const getOrCreatAIConversation=async(userId,systemInstruction)=>{
             systemInstruction:
                 systemInstruction ||
                 `
-                Bạn là một trợ lý tuyển dụng AI chuyên nghiệp và thân thiện. 
+                Bạn là một trợ lý tuyển dụng AI tên là Jarvis chuyên nghiệp và thân thiện. 
                 Nhiệm vụ của bạn là đưa ra tư vấn và lời khuyên hữu ích cho cả Ứng viên và Nhà tuyển dụng.
 
                 QUY TẮC CỐ ĐỊNH:

@@ -14,24 +14,47 @@ export const JOB_LEVEL_MAP = {
   "Senior": 5
 };
 
+
 const calcSkillMatch = (jobSkills, candidateSkills) => {
-  const processedJobSkills = jobSkills.map(s => s.name.toLowerCase().trim());
-  const processedCandidateSkills = candidateSkills.map(s => s.name.toLowerCase().trim());
+  if (!jobSkills || jobSkills.length === 0) return 1.0; // Nếu job không yêu cầu skill, mặc định pass 100%
+  if (!candidateSkills || candidateSkills.length === 0) return 0;
 
-  const skillLevel=jobSkills.map(s=>s.level);
-  const candidateSkillLevel=candidateSkills.map(s=>s.level);
-  let matchCount = 0;
-  processedJobSkills.forEach((jobSkill, index) => {
-    const candidateIndex = processedCandidateSkills.indexOf(jobSkill);
-    if (candidateIndex !== -1) {
-      // Nếu có skill trùng tên, so sánh level
-      if (LEVEL_MAP[candidateSkillLevel[candidateIndex]] >= LEVEL_MAP[skillLevel[index]]) {
-        matchCount++;
+  let totalSkillScore = 0;
+
+  jobSkills.forEach(jobSkill => {
+    const jobSkillNameLower = jobSkill.name.toLowerCase().trim();
+    const requiredLevel = LEVEL_MAP[jobSkill.level] || 1;
+
+    // Tìm skill tương ứng tốt nhất của ứng viên cho yêu cầu này
+    let bestMatchScoreForThisSkill = 0;
+
+    candidateSkills.forEach(candidateSkill => {
+      const candidateSkillNameLower = candidateSkill.name.toLowerCase().trim();
+      const candidateLevel = LEVEL_MAP[candidateSkill.level] || 1;
+
+      // So khớp tên (Node.js vs Nodejs)
+      const nameMatch = candidateSkillNameLower.includes(jobSkillNameLower) || 
+                        jobSkillNameLower.includes(candidateSkillNameLower);
+
+      if (nameMatch) {
+        let currentScore = 0;
+        if (candidateLevel >= requiredLevel) {
+          currentScore = 1; // Đạt hoặc vượt yêu cầu
+        } else {
+          // Tính điểm theo tỷ lệ (ví dụ: có 3/5 điểm)
+          currentScore = candidateLevel / requiredLevel;
+        }
+        
+        if (currentScore > bestMatchScoreForThisSkill) {
+          bestMatchScoreForThisSkill = currentScore;
+        }
       }
-    }
-  });
-  return processedJobSkills.length > 0 ? matchCount / processedJobSkills.length : 0;
+    });
 
+    totalSkillScore += bestMatchScoreForThisSkill;
+  });
+
+  return totalSkillScore / jobSkills.length;
 };
 
 export const matchCandidateToJob = (job, candidate, candidateSkillsOverride = null,previousJobTitle = []) => {
@@ -55,6 +78,7 @@ export const matchCandidateToJob = (job, candidate, candidateSkillsOverride = nu
       titleScore = 1;
     }
   }
+  // console.log("Skill Score:", skillScore, "Title Score:", titleScore);
   return {
     percentage: Math.round((0.7 * skillScore + 0.3 * titleScore) * 100),
     detail: {

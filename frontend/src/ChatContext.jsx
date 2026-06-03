@@ -8,6 +8,7 @@ export const ChatProvider = ({ children }) => {
 
   const openChat = (targetId,targetName ,targetType) => {
     setChatTarget({ targetId,targetName, targetType });
+    console.log("Opening chat with target:", { targetId, targetName, targetType }); // Debug log to check the target info when opening chat
     setShowChatWidget(true);
   };
 

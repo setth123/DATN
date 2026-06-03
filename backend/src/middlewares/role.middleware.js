@@ -1,5 +1,6 @@
 export const requireRecruiter = (req, res, next) => {
   if (!req.user.roles?.recruiter) {
+    console.log("User roles:", req.user); // Debug log to check user roles
     return res.status(403).json({
       message: "Recruiter role required"
     });

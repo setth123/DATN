@@ -209,7 +209,7 @@ export const endInterviewAndAnalyze = async (sessionId) => {
 };
 
 const analyzeInterviewTranscript = async (transcript) => {
-  const analysisSystemInstruction = `Bạn là một Chuyên gia Đánh giá Tuyển dụng (HR Analyst) có 20 năm kinh nghiệm.
+  const analysisSystemInstruction = `Bạn là một Chuyên gia Đánh giá Tuyển dụng (HR Analyst) tên là Jarvis có 20 năm kinh nghiệm.
 Nhiệm vụ: Phân tích bản ghi (transcript) của buổi phỏng vấn âm thanh để đưa ra đánh giá chi tiết về ứng viên.
 Dữ liệu đầu vào: Một đoạn hội thoại giữa Người phỏng vấn (model) và Ứng viên (user).
 Yêu cầu phân tích:

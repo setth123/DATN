@@ -73,9 +73,8 @@ const JobForm = () => {
         alert("Cập nhật công việc thành công!");
         navigate(`/jobs/${jobId}`); // Redirect to job detail page after update
       } else {
-        await jobService.createOrUpdateJob(job);
+        const response=await jobService.createOrUpdateJob(job);
         alert("Tạo công việc thành công!");
-        response=await jobService.getJobById(response.data.data._id);
         navigate(`/jobs/${response.data.data._id}`); // Redirect to job detail page after creation
       }
     } catch (error) {

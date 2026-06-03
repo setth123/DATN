@@ -70,10 +70,8 @@ export const recommendCandidatesForJob = async (userId, jobId) => {
   if (!job) {
     throw new Error("Job not found or access denied");
   }
-
   // 3. Load candidates
   const candidates = await Candidate.find().where("isOpenToWork").equals(true);
- 
   // 4. Matching
   const results = candidates
     .map(candidate => {

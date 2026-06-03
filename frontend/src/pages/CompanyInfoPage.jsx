@@ -31,6 +31,7 @@ const CompanyInfoPage = ({ isCurrentUser }) => {
       setLoading(true);
       try {
         let companyData = null;
+        let companyIdForJobs = paramCompanyId; // Sử dụng ID từ param làm mặc định
         const currentUser = authService.getCurrentUser(); // Get current user here
 
         if (isCurrentUser) {
@@ -40,6 +41,7 @@ const CompanyInfoPage = ({ isCurrentUser }) => {
             return;
           }
           companyData = response.data.data;
+          companyIdForJobs = companyData._id; // Ghi đè bằng ID từ dữ liệu công ty của người dùng hiện tại
           setCompany(companyData);
           localStorage.setItem("company", JSON.stringify(companyData));
 
@@ -47,7 +49,7 @@ const CompanyInfoPage = ({ isCurrentUser }) => {
           // It's consistent with how candidate role is handled in CandidatePage.jsx.
           const user = JSON.parse(localStorage.getItem("user"));
           if (user && user.user) {
-            user.user.roles.company = true;
+            user.user.roles.Recruiter = true;
             localStorage.setItem("user", JSON.stringify(user));
           }
 
@@ -60,9 +62,9 @@ const CompanyInfoPage = ({ isCurrentUser }) => {
             return;
           }
           const response = await companyService.getCompanyById(paramCompanyId);
-          companyData = response;
+          console.log("Company response:", response.data.data); // Debug log to check the response structure
+          companyData = response.data.data;
           setCompany(companyData);
-
           // Check if the logged-in user is the owner of this company profile
           if (currentUser && currentUser.user._id === companyData.ownerId) {
             setIsOwner(true);
@@ -71,10 +73,12 @@ const CompanyInfoPage = ({ isCurrentUser }) => {
           }
         }
 
-        if (companyData) {
-          const jobsResponse = await jobService.getJobsByCompany(companyData._id);  
+        if (companyData && companyIdForJobs) {
+          console.log(companyIdForJobs);
+          const jobsResponse = await jobService.getJobsByCompany(companyIdForJobs);
           console.log("Jobs response:", jobsResponse); // Debug log to check the response structure        
           // Ensure jobsResponse.data.data is an array before setting state
+          console.log(jobsResponse.data);
           if (jobsResponse.data && Array.isArray(jobsResponse.data)) {
             setJobs(jobsResponse.data);
           } else {

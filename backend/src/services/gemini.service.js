@@ -21,7 +21,7 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
 
     // KHỞI TẠO CHAT SESSION: Truyền history, tools và systemInstruction vào config
     const chat = genAI.chats.create({
-      model: "gemma-4-31b-it", // Thay đổi model nếu cần
+      model: "gemini-2.5-flash", // Thay đổi model nếu cần
       config: {
         systemInstruction: systemInstruction,
         tools: tools
@@ -33,7 +33,7 @@ export const runGemini = async (messages, onChunk, userId, systemInstruction) =>
     const result = await chat.sendMessageStream({
       message:userPrompt
     });
-
+    console.log(">>> Request sent to Gemini. Waiting for stream...");
     // CHỈNH SỬA 2: handleStream bây giờ sẽ TRẢ VỀ văn bản cuối cùng thu thập được
     const finalAiResponse = await handleStream(result, chat, onChunk, userId);
 

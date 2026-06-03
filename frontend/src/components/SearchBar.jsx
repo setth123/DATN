@@ -78,7 +78,7 @@ const SearchBar = () => {
             value={selectedProvince}
             onChange={handleProvinceChange}
           >
-            <option value="" disabled>
+            <option value="" >
               Tỉnh/Thành phố
             </option>
             {provinces.map((p, i) => (
@@ -99,7 +99,7 @@ const SearchBar = () => {
             onChange={handleWardChange} // Add onChange handler
             disabled={!selectedProvince} // Khóa ô này nếu chưa chọn tỉnh
           >
-            <option value="" disabled>
+            <option value="" >
               {selectedProvince ? "Chọn Phường/Xã" : "Chọn Tỉnh trước"}
             </option>
             {availableWards.map((w, i) => (

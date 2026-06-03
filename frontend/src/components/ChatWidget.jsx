@@ -20,9 +20,9 @@ const ChatWidget = () => {
     };
 
     const { showChatWidget, chatTarget, closeChat } = useChat();
-    const [messages, setMessages] = useState(
-        chatTarget?.targetType === 'AI' ? [aiGreetingMessage] : []
-    );
+
+    // console.log("Initializing messages with chatTarget:", chatTarget.targetType);
+    const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
     const [conversationId, setConversationId] = useState(null);
     const messagesEndRef = useRef(null);
@@ -43,6 +43,7 @@ const ChatWidget = () => {
             if (!chatTarget) return;
 
             if (chatTarget.targetType === 'AI') {
+                setMessages([aiGreetingMessage]); // Reset to only greeting for AI chats
                 // AI chat requires a logged-in user. The conversation ID is the user's ID.
                 if (currentUser && currentUser.user._id) {
                     const userId = currentUser.user._id;
@@ -81,14 +82,12 @@ const ChatWidget = () => {
 
         const getMessages = async () => {
             try {
-                setMessages([aiGreetingMessage]);
                 const res = await messageService.getMessages(conversationId, 50, null, isAI);
                 const history = res.data.data || [];
-
                 if (isAI) {
                     // CHỈ HIỆN LỜI CHÀO KHI LÀ AI:
                     // Gộp lời chào mặc định + lịch sử chat từ Server
-                    setMessages([messages, ...history]);
+                    setMessages([aiGreetingMessage, ...history]);
                 } else {    
                     // Chat với người dùng/tuyển dụng bình thường:
                     // Chỉ hiện lịch sử chat, không có lời chào AI
