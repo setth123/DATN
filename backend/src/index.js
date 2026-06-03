@@ -37,7 +37,7 @@ connectDB(); // Gọi hàm kết nối DB
 const allowedOrigins = [
     process.env.CORS_ORIGIN,
     "http://localhost:3000",
-    "http://localhost:5173",
+    "http://localhost:4173",
 ];
 
 app.use(cors({
@@ -61,7 +61,7 @@ app.get("/", (req, res) => {
     res.send("API is running...");
 });
 
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRoutes);   
 app.use("/api/applications", applicationRoutes);
 app.use("/api/candidates", candidateRoutes);
 app.use("/api/companies", companyRoutes);
