@@ -61,16 +61,16 @@ app.get("/", (req, res) => {
     res.send("API is running...");
 });
 
-app.use("/api/auth", authRoutes);   
-app.use("/api/applications", applicationRoutes);
-app.use("/api/candidates", candidateRoutes);
-app.use("/api/companies", companyRoutes);
-app.use("/api/conversations", conversationRoutes);
-app.use("/api/jobs", jobRoutes);
-app.use("/api/messages", messageRoutes);
-app.use("/api/recommended", recommendedRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/interview", interviewRoutes);
+app.use("/auth", authRoutes);   
+app.use("/applications", applicationRoutes);
+app.use("/candidates", candidateRoutes);
+app.use("/companies", companyRoutes);
+app.use("/conversations", conversationRoutes);
+app.use("/jobs", jobRoutes);
+app.use("/messages", messageRoutes);
+app.use("/recommended", recommendedRoutes);
+app.use("/notifications", notificationRoutes);
+app.use("/interview", interviewRoutes);
 
 // --- 6. START SERVER ---
 server.listen(PORT, () => {
