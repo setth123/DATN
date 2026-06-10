@@ -36,7 +36,7 @@ connectDB(); // Gọi hàm kết nối DB
 // --- 3. MIDDLEWARES ---
 const allowedOrigins = [
     process.env.CORS_ORIGIN,
-    "http://localhost:80"
+    "http://localhost:80",
     "http://localhost:3000",
     "http://localhost:4173",
 ];
