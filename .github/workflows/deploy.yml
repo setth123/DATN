@@ -18,7 +18,14 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd ${{ secrets.PROJECT_PATH }}
-            git pull origin main
+            
+            # Tải code mới nhất từ repo về vùng đệm nhưng chưa merge
+            git fetch origin main
+            # Ép buộc xóa hết conflict/thay đổi ở VM và đưa trạng thái về giống hệt repo
+            git reset --hard origin/main
+            # (Tùy chọn) Xóa các file rác mới phát sinh trên VM nếu có
+            git clean -fd
+            
             docker compose down
             docker compose up -d --build
             docker image prune -f
